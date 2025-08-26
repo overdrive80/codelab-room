@@ -11,7 +11,6 @@ feedback link:
 Duration: 0:10:00
 
 ### Introducción A Room
-
 En este artículo veremos una introducción a Room, una librería de Android que provee una capa de abstracción sobre SQLite, para acceso a bases de datos.
 
 Esta simplifica todas las creaciones del esquema de una base de datos, las relaciones entre ellas y sus operaciones SQL.
@@ -120,7 +119,7 @@ Adicionalmente cubriremos características como:
 - Etc.
 
 <!-- ------------------------ -->
-## Crear Una Base De Datos Room
+## Crear Una Base De Datos Room <a name="crear-bd"></a>
 Duration: 0:10:00
 
 En este tutorial vamos a crear una base de datos Room para una App Android de **[ejemplo sobre listas de compras](https://www.develou.com/ejemplo-de-room/)**.
@@ -131,7 +130,7 @@ El objetivo es crear los componentes vistos en la **[introducción a Room](https
 
 Puedes descargar el resultado final del tutorial desde el siguiente enlace:
 
-**[Descargar](http://develou.com/downloads/room-1.zip)**
+<button>[Descargar](http://develou.com/downloads/room-1.zip)</button>
 
 Empecemos el desarrollo.
 
@@ -526,3 +525,903 @@ Al usar un `StringBuilder` podemos concatenar el nombre de cada lista y proyecta
 Y para terminar, ejecuta el proyecto. Deberías ver lo siguiente:
 
 <img src="img/screenshot-app-shopping-list-616x1300.png" width="300" alt="captura_lista">
+
+## Insertar Datos Con Room
+En este tutorial verás cómo insertar datos con Room desde una actividad de creación de listas de compras.
+
+Recuerda que puedes ver el alcance general de este ejemplo en la [**descripción de la App**](https://www.develou.com/ejemplo-de-room/).
+
+Al haber [**creado la base de datos**]() de listas de compra, ahora agregaremos un `RecyclerView` para mejorar la vista de `MainActivity`.
+
+Adicionalmente, pondremos un `FAB` que inicie una nueva actividad de creación. El siguiente boceto muestra nuestro plan:
+
+![insertar_lista](img/insertar-lista-de-compras-app.png)
+
+Puedes descargar el código completo desde el siguiente link:
+
+<button>[Descargar](http://develou.com/downloads/room-2-nKtrws8xNUej5EdLl70nZw.zip)</button>
+
+Codifiquemos la solución.
+
+### 1. Añadir RecyclerView Al Layout
+Reemplazar el layout actual requiere las siguientes acciones:
+
+- Reemplazar `ConstraintLayout` raíz por `CoordinatorLayout`.
+- Reemplazar `TextView` por `RecyclerView`.
+- Añadir `FAB` en la parte inferior derecha.
+- Añadir icono con símbolo ‘+’.
+- Añadir soporte de vectores.
+
+Basado en ello, abre el layout `activity_main.xml` y pega el siguiente código:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:app="http://schemas.android.com/apk/res-auto"
+xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+tools:context=".shoppinglists.MainActivity">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/floating_action_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        app:srcCompat="@drawable/ic_add_24"/>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
+```
+
+Para agregar el icono haz clic derecho en tu carpeta **drawable**, presiona **New**, luego **Vector Asset**. Seguido selecciona **Clip Art** en **Asset Type**, escribe **«add»** en el diálogo emergente y selecciona el icono que necesitamos.
+
+![vector_asset](img/vector_asset.png)
+
+Nómbralo **ic_add_24** y confirma su inclusión.
+
+Ahora abre el archivo **build.gradle** del módulo y pega la siguiente instrucción para habilitar el uso de vectores en el proyecto Android Studio:
+
+```
+defaultConfig {
+    vectorDrawables.useSupportLibrary = true
+}
+```
+Sincroniza y tendremos completa nuestra interfaz para mostrar las listas de compras.
+
+### 2. Crear Adaptador Del RecyclerView
+El **layout** para el ítem de la lista es simple. Crea el archivo `shopping_list_item.xml` y recubre un `TextView` con un `ConstraintLayout`:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:app="http://schemas.android.com/apk/res-auto"
+xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:padding="@dimen/normal_padding"
+android:layout_height="?listPreferredItemHeight">
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Lista de ejemplo" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+A continuación, crea la clase `ShoppingListAdapter`.
+
+La idea es _inflar_ el layout del ítem. Agregar un método para actualizar los ítems y bindear el nombre de las listas de compra con el `TextView` existente.
+
+**Solución:**
+
+```java
+public class ShoppingListAdapter
+extends RecyclerView.Adapter<ShoppingListViewHolder> {
+
+    private List<ShoppingList> mShoppingLists;
+
+    @NonNull
+    @Override
+    public ShoppingListViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return ShoppingListViewHolder.create(parent);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ShoppingListViewHolder holder, int position) {
+        ShoppingList item = mShoppingLists.get(position);
+        holder.bind(item);
+    }
+
+    @Override
+    public int getItemCount() {
+        return mShoppingLists == null ? 0 : mShoppingLists.size();
+    }
+
+    public void setItems(List<ShoppingList> items) {
+        mShoppingLists = items;
+        notifyDataSetChanged();
+    }
+
+}
+```
+
+Crea también la clase `ShoppingListViewHolder` para procesar el _inflado_ y el _binding_ de cada ítem:
+
+```java
+public class ShoppingListViewHolder extends RecyclerView.ViewHolder {
+private final TextView mNameText;
+
+    public ShoppingListViewHolder(@NonNull View itemView) {
+        super(itemView);
+        mNameText = itemView.findViewById(R.id.name);
+    }
+
+    public void bind(ShoppingList item) {
+        mNameText.setText(item.getName());
+    }
+
+    public static ShoppingListViewHolder create(ViewGroup parent) {
+        View v = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.shopping_list_item, parent, false);
+        return new ShoppingListViewHolder(v);
+    }
+}
+```
+
+### 3. Poblar RecyclerView Desde Room
+**¿Cómo ponemos el contenido de la base de datos en la lista?**
+
+- Abre `MainActivity`.
+- Obtén la instancia del `RecyclerView`.
+- Crea una instancia del **Adaptador** y asígnala al **recycler**.
+- Dirígete donde observamos el `LiveData` del `ViewModel`. Reemplaza ese código por la llamada del método `setItems()` del adaptador.
+
+Lo anterior reflejado en código sería así:
+
+```java
+public class MainActivity extends AppCompatActivity {
+
+    private ShoppingListViewModel mViewModel;
+    private RecyclerView mList;
+    private ShoppingListAdapter mAdapter;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        ViewModelProvider.AndroidViewModelFactory factory =
+                ViewModelProvider.AndroidViewModelFactory.getInstance(getApplication());
+
+        mViewModel = new ViewModelProvider(this, factory)
+                .get(ShoppingListViewModel.class);
+
+        setupList();
+
+        setupFab();
+    }
+
+    private void setupList() {
+        mList = findViewById(R.id.list);
+        mAdapter = new ShoppingListAdapter();
+        mList.setAdapter(mAdapter);
+        mViewModel.getShoppingLists().observe(this, mAdapter::setItems);
+    }
+
+    private void setupFab() {
+        findViewById(R.id.floating_action_button)
+                .setOnClickListener(view -> addNewShoppingList());
+    }
+
+    private void addNewShoppingList() {
+        startActivity(new Intent(this, AddShoppingListActivity.class));
+    }
+}
+```
+
+Si ejecutas el proyecto en este punto deberías ver este resultado:
+
+<img src="img/room-recyclerview-616x1300.png" width="300" alt="recycler_room">
+
+### 4. Añadir Actividad De Creación De Listas De Compras
+Para la actividad de **«Nueva lista»** usaremos una plantilla **Empty Activity**. El nombre de la clase será `AddShoppingListActivity`.
+
+El **layout** consta de un `EditText` y un botón de **guardar**. Abre `activity_add_shopping_list.xml` para satisfacer el diseño:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:app="http://schemas.android.com/apk/res-auto"
+xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:padding="@dimen/normal_padding"
+tools:context=".addshoppinglist.AddShoppingListActivity">
+
+    <Button
+        android:id="@+id/create_button"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/create_button"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/name_layout" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/name_layout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/shopping_list_hint"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:layout_width="match_parent"
+            android:id="@+id/name_field"
+            android:layout_height="wrap_content" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+También debemos asegurarnos de retornar con el **Up Button**. Por lo que habilitamos su aparición con en `onCreate()`:`
+
+```java
+public class AddShoppingListActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_add_shopping_list);
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+    }
+
+    
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
+    }
+}
+```
+
+### 5. Guardar Lista Nueva En Base De Datos
+Al presionar el botón de **crear**, debemos comunicárselo al `ViewModel` que es el encargado de insertar datos con Room con su método `insert()`.
+
+**¿Cómo lo haces?**
+
+- Obtén la instancia de `ShoppingListViewModel` en `onCreate()`.
+- Obtén la instancia del boton de **crear**.
+- Asigna un objeto `OnClickListener` al botón.
+- Llama a `insert()` del view model en `onClick()`.
+- Finaliza la actividad.
+
+Al completar las tareas anteriores tu actividad de creación se verá así:
+
+```java
+public class AddShoppingListActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_add_shopping_list);
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+
+        ViewModelProvider.AndroidViewModelFactory factory
+                = ViewModelProvider.AndroidViewModelFactory.getInstance(getApplication());
+        ShoppingListViewModel vm = new ViewModelProvider(this, factory)
+                .get(ShoppingListViewModel.class);
+
+        setupCreateButton(vm);
+    }
+
+    private void setupCreateButton(ShoppingListViewModel vm) {
+        findViewById(R.id.create_button).setOnClickListener(
+                view -> {
+                    // Obtener valor del campo de texto
+                    EditText nameField =  findViewById(R.id.name_field);
+                    String name = nameField.getText().toString();
+
+                    // Ignorar acción si hay 0 caracteres
+                    if (name.isEmpty()) {
+                        return;
+                    }
+
+                    // Crear entidad y guardarla
+                    String id = UUID.randomUUID().toString();
+                    ShoppingList shoppingList = new ShoppingList(id, name);
+                    vm.insert(shoppingList);
+
+                    // Ir a la lista
+                    finish();
+                });
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
+    }
+}
+```
+
+No olvides iniciar esta actividad al presionar el `FAB` de la lista:
+
+```java
+private void setupFab() {
+    findViewById(R.id.floating_action_button)
+            .setOnClickListener(view -> addNewShoppingList());
+}
+
+private void addNewShoppingList() {
+    startActivity(new Intent(this, AddShoppingListActivity.class));
+}
+```
+
+Ejecuta el proyecto y comprueba la inserción de listas.
+
+<img src="img/screenshot-crear-lista-compras-app-616x1300.png" width="300" alt="crear_listas"><img src="img/screnshot-lista-creada-app-616x1300.png" width="300" alt="lista_creada">
+
+> aside positive **Nota**: Aunque en este ejemplo estamos usando un solo `ViewModel`, normalmente debes crear uno por cada controlador de vista.
+
+### 6. Insertar Una Lista De Entities
+Room tiene la capacidad de [**insertar múltiples entidades**](https://developer.android.com/training/data-storage/room/accessing-data#convenience-insert) si pasamos una lista como parámetro.
+
+Para ver su funcionamiento agreguemos a `ShoppingListDao` el siguiente método:
+
+```java
+@Insert(onConflict = OnConflictStrategy.IGNORE)
+void insertShoppingLists(List<ShoppingList> lists);
+```
+
+Ahora desde `ShoppingListDatabase` creamos una lista de 5 elementos para reemplazar la prepoblación que hacíamos antes de forma individual:
+        
+```java
+// Prepoblar base de datos con callback
+private static final RoomDatabase.Callback mRoomCallback = new Callback() {
+    @Override
+    public void onCreate(@NonNull SupportSQLiteDatabase db) {
+        super.onCreate(db);
+
+        dbExecutor.execute(() -> {
+            ShoppingListDao dao = INSTANCE.shoppingListDao();
+
+            List<ShoppingList> lists = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                String id = UUID.randomUUID().toString();
+                lists.add(new ShoppingList(id, "Lista " + (i+1)));
+            }
+
+            dao.insertShoppingLists(lists);
+        });
+    }
+};
+```
+
+De esta forma, podremos hacer en una misma transacción un **bulk** de inserciones de listas de compras.
+
+## Consultar Datos Con Room
+En este tutorial veremos con más detalle como consultar datos con Room y la anotación `@Query`.
+
+> aside positive **Más específicamente**: consultar pasando uno o múltiples parámetros y como consultar solo las columnas que necesitemos.
+
+¿Cómo lo reflejaremos en nuestra [**App de listas de compras**]()?
+
+Añadiremos un filtro simple en la actividad principal y crearemos una actividad de edición como lo ilustra el siguiente boceto:
+
+![consultar_datos_room](img/consultar-datos-con-room.png)
+
+Puedes descargar el código completo del proyecto desde el siguiente enlace:
+
+<button>[Descargar](http://develou.com/downloads/room-3-3ebCorpdZkStjqMyKYO1og.zip)</button>
+
+Veamos de qué va la solución.
+
+### 1. Enlazar Un Parámetro En Una Consulta
+Los métodos anotados con `@Query` en nuestros DAOs pueden recibir parámetros con el fin de enlazarlos con argumentos de la consulta.
+
+Para ello usamos la sintaxis `:nombre` con el fin de diferenciar el contexto.
+
+**Ejemplo:**
+
+Podemos añadir como parámetro el **ID** que proporcione el item cliqueado en el **recyclerView** para consultar la lista de compras.
+
+Abre `ShoppingListDao` y crea un nuevo método llamado `getShoppingList()` que reciba el **ID** y _bindealo_ así:
+
+```java
+@Query("SELECT * FROM shopping_list WHERE id = :id LIMIT 1")
+LiveData<ShoppingList> getShoppingList(String id);
+```
+
+De esta forma, `:id` será reemplazado por el parámetro `id`.
+
+### 2. Enlazar Múltiples Parámetros En Una Consulta
+Con la misma lógica, Room también soporta el enlace de una lista de parámetros. La librería genera automáticamente la consulta en tiempo de ejecución, asignando cada elemento en la sentencia.
+
+**Ejemplo:**
+
+Probemos esta característica con los filtros por categoría propuestos en el boceto al inicio del tutorial.
+
+Lo primero será agregar la categoría como columna a la entidad `ShoppingList` así:
+
+```java
+@Nullable
+@ColumnInfo(name = "category")
+private final String mCategory;
+```
+
+Ahora crea un nuevo método en el DAO que se llame `getShoppingListsByCategories()` y pásale una lista de strings como parámetro. Bindeala en un operador **IN**:
+
+```java
+@Query("SELECT * FROM shopping_list WHERE category IN(:categories)")
+LiveData<List<ShoppingList>> getShoppingListsByCategories(List<String> categories);
+```
+
+Y listo, de esa forma consultaremos los elementos de la actividad principal cuando agreguemos los check boxes para filtrar.
+
+### 3. Seleccionar Un Subconjunto De Columnas En Room
+Room nos permite retornar POJOs personalizados que representen solo las columnas que deseamos retornar si el caso de uso lo amerita.
+
+**Por ejemplo**:
+
+Añade dos columnas más a `ShoppingList` para la fecha de creación y última modificación. Con estas serían ya 5 columnas de nuestra tabla (la propiedad `defaultValue` permite asignar un valor por defecto al campo si no es definido en la inserción).
+
+```java
+@ColumnInfo(name = "created_date", defaultValue = "CURRENT_TIMESTAMP")
+private final String mCreatedDate;
+
+@ColumnInfo(name = "last_updated", defaultValue = "CURRENT_TIMESTAMP")
+private final String mLastUpdated;
+```
+
+Ahora crea una nueva clase llamada `ShoppingListForList` y añade solo dos campos: `id` y `name`.
+
+```java
+public class ShoppingListForList {
+public String id;
+public String name;
+}
+```
+
+Termina asignado esta clase como tipo de retorno y seleccionando las dos columnas objetivo:
+
+```java
+@Query("SELECT id, name FROM shopping_list")
+LiveData<List<ShoppingListForList>> getAll();
+
+@Query("SELECT id, name FROM shopping_list WHERE category IN(:categories)")
+LiveData<List<ShoppingListForList>> getShoppingListsByCategories(List<String> categories);
+```
+
+Consultando solo las columnas necesarias optimizas la velocidad de tus consultas.
+
+> aside positive **Nota**: Modifica los métodos del repositorio y **ViewModel** para que acepten este tipo en sus retornos.
+
+
+### 4. Insertar Registros Parcialmente
+También es posible usar POJOs arbitrarios que representen la inserción con tan solo columnas que nos interesen.
+
+**Ejemplo:**
+
+Vamos a crear una entidad llamada `ShoppingListInsert` con solo 3 campos: `id`, `name` y `category`. Donde `category` tomará como valor inicial una de las tres categorías usadas para el ejemplo:
+
+```java
+public class ShoppingListInsert {
+String id;
+String name;
+String category = generateCategory();
+
+    public ShoppingListInsert(String id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public static String generateCategory() {
+        String[] categories = new String[]{"Fitness", "Eventos", "Rápidas"};
+        return categories[new Random().nextInt(3)];
+    }
+}
+```
+
+Ahora creamos un método para insertar este tipo de objetos llamado `partialInsert()`. Es importante pasarle la propiedad `entity` con la entidad original a la que Room interpretará:
+
+```java
+@Insert(onConflict = OnConflictStrategy.IGNORE, entity = ShoppingList.class)
+void partialInsert(ShoppingListInsert shoppingList);
+
+@Insert(onConflict = OnConflictStrategy.IGNORE, entity = ShoppingList.class)
+void insertShoppingLists(List<ShoppingListInsert> lists);
+```
+
+Actualiza también el método `insertShoppingLists()` para la inserción múltiple.
+
+### 5. Actualizar Versión De La Base De Datos
+Debido a que nuestro esquema ha cambiado, iremos a `ShoppingListDatabase` y cambia la propiedad `version` por el valor **2**.
+
+Adicionalmente, agrega a la creación de la instancia con el `builder` el método `fallbackToDestructiveMigration()` para eliminar todo el contenido actual de la base de datos y recrearlo con la siguiente versión.
+
+```java
+INSTANCE = Room.databaseBuilder(
+        context.getApplicationContext(), ShoppingListDatabase.class,
+        DATABASE_NAME)
+        .addCallback(mRoomCallback)
+        .fallbackToDestructiveMigration()
+        .build();
+```
+
+### 6. Filtrar Listas De Compras
+Una vez modificado nuestra capa de datos para satisfacer las características de nuestros bocetos, comenzaremos a crear la interfaz propuesta.
+
+Comencemos con el filtro:
+
+1. Mueve el `RecyclerView` de `activity_main.xml` a un nuevo layout llamado `main_content.xml`. Android Studio puede hacerlo automáticamente si das clic derecho en el componente y presionas **Refactor > Layout**.
+
+    ![refactorlayout](img/refactor_layout.png)
+
+2. Abre el nuevo layout, agrega como nodo raíz un `ConstraintLayout` y sitúa en la parte superior a tres etiquetas `CheckBox`. La solución sería:
+
+    ```
+    <?xml version="1.0" encoding="utf-8"?>
+    
+    <androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="@dimen/normal_padding">
+    
+        <CheckBox
+            android:id="@+id/filter_1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/filter_1"
+            app:layout_constraintEnd_toStartOf="@+id/filter_2"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    
+        <CheckBox
+            android:id="@+id/filter_2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/filter_2"
+            app:layout_constraintEnd_toStartOf="@+id/filter_3"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toEndOf="@+id/filter_1"
+            app:layout_constraintTop_toTopOf="parent" />
+    
+        <CheckBox
+            android:id="@+id/filter_3"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/filter_3"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toEndOf="@+id/filter_2"
+            app:layout_constraintTop_toTopOf="parent" />
+    
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/list"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/normal_padding"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/filter_2"
+            tools:listitem="@layout/shopping_list_item"
+            tools:showIn="@layout/activity_main" />
+    
+    </androidx.constraintlayout.widget.ConstraintLayout>
+    ```
+
+3. Procesa las categorías seleccionadas agregando al `ViewModel` un `LiveData` para ellas. Complementariamente, provee un método para añadirlas y otro para removerlas:
+
+    ```java
+    public class ShoppingListViewModel extends AndroidViewModel {
+    
+        // Filtros observados
+        private final MutableLiveData<List<String>> mCategories
+                = new MutableLiveData<>(new ArrayList<>());
+    
+    
+        // Filtros
+        private final List<String> mFilters = new ArrayList<>();
+        
+    
+        public void addFilter(String category) {
+            mFilters.add(category);
+            mCategories.setValue(mFilters);
+        }
+    
+        public void removeFilter(String category) {
+            mFilters.remove(category);
+            mCategories.setValue(mFilters);
+        }
+    }
+    ```
+
+4. Usaremos una transformación `switchMap()` para obtener las listas de compras por categorías en el constructor del `ViewModel`. Si no existen categorías marcadas entonces obtenemos todos los registros:
+
+    ```java
+    public ShoppingListViewModel(@NonNull Application application) {
+    super(application);
+    mRepository = new ShoppingListRepository(application);
+    
+            // Obtener listas de compras por categorías
+            mShoppingLists = Transformations.switchMap(
+                    mCategories,
+                    categories -> {
+                        if (categories.isEmpty()) {
+                            return mRepository.getShoppingLists();
+                        } else {
+                            return mRepository.getShoppingListsWithCategories(categories);
+                        }
+                    }
+            );
+    }
+    ```
+
+5. Por último, actualizamos `mFilters` desde `MainActivity` a través del método `setupFilters()`. Aquí conseguiremos las referencias de los **CheckBoxes** y les añadimos una escucha. Esta añade o elimina los filtros dependiendo de su estado.
+
+    ```java
+    private void setupFilters() {
+    mFilters = new ArrayList<>();
+    mFilters.add(findViewById(R.id.filter_1));
+    mFilters.add(findViewById(R.id.filter_2));
+    mFilters.add(findViewById(R.id.filter_3));
+    
+            // Definir escucha de filtros
+            CompoundButton.OnCheckedChangeListener listener = (compoundButton, checked) -> {
+                String category = compoundButton.getText().toString();
+                if (checked) {
+                    mViewModel.addFilter(category);
+                } else {
+                    mViewModel.removeFilter(category);
+                }
+            };
+    
+            // Setear escucha
+            for (CheckBox filter : mFilters) {
+                filter.setOnCheckedChangeListener(listener);
+            }
+    }
+    ```
+
+Si ejecutas el proyecto podrás filtrar las listas por la categoría asignada:
+
+<img src="img/sin-filtro-room-app-616x1300.png" width="300" alt="sin_filtro"> <img src="img/filtro-checkbox-android-616x1300.png" width="300" alt="filtro_checkbox">
+
+### 7. Editar Listas De Compras
+Por el momento la pantalla de edición estará vacía. El único dato que desplegaremos será el nombre en la [**Toolbar**](https://www.develou.com/toolbar-en-android-creacion-de-action-bar-en-material-design/).
+
+Veamos cómo conseguirlo:
+
+#### 1. Crear Actividad De Edición
+Añade una nueva actividad yendo a **File > New > Activity > Empty Activity** y nombrala `EditShoppingListActivity`. Seguido, habilita la navegación hacia arriba:
+
+```java
+public class EditShoppingListActivity extends AppCompatActivity {
+
+    public static final String EXTRA_SHOPPING_LIST_ID = "com.develou.shoppinglist.shoppingListId";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_edit_shopping_list);
+        
+        // Obtener id de la lista de compras
+        String id = getIntent().getStringExtra(EXTRA_SHOPPING_LIST_ID);
+        
+        setupActionBar();
+    }
+
+    private void setupActionBar() {
+        ActionBar actionBar = getSupportActionBar();
+
+        actionBar.setDisplayHomeAsUpEnabled(true);
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
+    }
+}
+```
+
+Recuerda que recibiremos el id de la lista de compras, por lo que es necesario extraerlo desde el extra.
+
+#### 2. Añadir Escucha De Ítems Al Adaptador
+Hasta el momento nuestro **adaptador** no reaccionaba a los eventos de clics sobre sus ítems, así que añadiremos una interfaz que se encargue de esta responsabilidad.
+    
+Esto implica:
+
+ - Añadir una interfaz de escucha al adaptador.
+ - Procesar el **clic** sobre cada ítem en el `ViewHolder`.
+ - Añadir un método para asignar la escucha.
+ - Ubicar como clase interna al `ViewHolder`.
+
+Al codificar todas las características mencionadas tendrás:
+
+```java
+public class ShoppingListAdapter
+extends RecyclerView.Adapter<ShoppingListAdapter.ShoppingListViewHolder> {
+
+    private List<ShoppingListForList> mShoppingLists;
+    private ItemListener mItemListener;
+
+    @NonNull
+    @Override
+    public ShoppingListViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new ShoppingListViewHolder(
+                LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.shopping_list_item, parent, false)
+        );
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ShoppingListViewHolder holder, int position) {
+        ShoppingListForList item = mShoppingLists.get(position);
+        holder.bind(item);
+    }
+
+    @Override
+    public int getItemCount() {
+        return mShoppingLists == null ? 0 : mShoppingLists.size();
+    }
+
+    public void setItems(List<ShoppingListForList> items) {
+        mShoppingLists = items;
+        notifyDataSetChanged();
+    }
+
+    public void setItemListener(ItemListener listener) {
+        mItemListener = listener;
+    }
+
+    interface ItemListener {
+        void onClick(ShoppingListForList shoppingList);
+    }
+
+    public class ShoppingListViewHolder extends RecyclerView.ViewHolder {
+        private final TextView mNameText;
+
+        public ShoppingListViewHolder(@NonNull View itemView) {
+            super(itemView);
+            mNameText = itemView.findViewById(R.id.name);
+            itemView.setOnClickListener(view -> {
+                if (mItemListener != null) {
+                    ShoppingListForList clickedItem = mShoppingLists.get(getAdapterPosition());
+                    mItemListener.onClick(clickedItem);
+                }
+            });
+        }
+
+        public void bind(ShoppingListForList item) {
+            mNameText.setText(item.name);
+        }
+    }
+}
+```
+
+#### 3 Iniciar Actividad De Edición
+Añade una escucha al adaptador en `MainActivity`. La idea es enviar el `Id` de la lista de compras en el `Intent` explícito con la finalidad de procesarlo en la actividad de edición.
+
+```java
+private void setupList() {
+    mList = findViewById(R.id.list);
+    mAdapter = new ShoppingListAdapter();
+    mList.setAdapter(mAdapter);
+    
+    // Asignar escucha de ítems
+    mAdapter.setItemListener(this::editShoppingList);
+    
+    // Observar cambios de listas de compras
+    mViewModel.getShoppingLists().observe(this, mAdapter::setItems);
+}
+
+
+private void editShoppingList(ShoppingListForList shoppingList) {
+    Intent intent = new Intent(MainActivity.this,
+    EditShoppingListActivity.class);
+    intent.putExtra(EditShoppingListActivity.EXTRA_SHOPPING_LIST_ID,
+    shoppingList.id);
+    startActivity(intent);
+}
+```
+Crea un nuevo método en el repositorio para cargar una lista de compras por `ID`:
+
+```java
+public LiveData<ShoppingList> getShoppingList(String id){
+    return mShoppingListDao.getShoppingList(id);
+}
+```
+
+#### 4 Crear ViewModel Para Edición
+Luego, crea la clase `EditShoppingListViewModel` y:
+
+ - Hazla extender de `AndroidViewModel`.
+- Añade un `LiveData` para el `ID` de la lista.
+- Añade un `LiveData` para la lista a editar. Relaciónala con el `ID` a través de una transformación `switchMap()`.
+- Agrégale un método para cargar la lista con el repositorio.
+
+El código sería el siguiente:
+
+```java
+public class EditShoppingListViewModel extends AndroidViewModel {
+
+    private final ShoppingListRepository mRepository;
+
+    private final MutableLiveData<String> mShoppingListId = new MutableLiveData<>();
+
+    private final LiveData<ShoppingList> mShoppingList;
+
+    public EditShoppingListViewModel(@NonNull Application application) {
+        super(application);
+        mRepository = new ShoppingListRepository(application);
+        mShoppingList = Transformations.switchMap(
+                mShoppingListId,
+                mRepository::getShoppingList
+        );
+    }
+
+    public void start(String id){
+        if(id.equals(mShoppingListId.getValue())){
+            return;
+        }
+        mShoppingListId.setValue(id);
+    }
+
+    public LiveData<ShoppingList> getShoppingList() {
+        return mShoppingList;
+    }
+}
+```
+
+Para finalizar, actualizamos la interfaz al observar `mShoppingList` en la actividad. Cuando se cargue la lista de compras a editar cambiamos el título de la `Toolbar` por el nombre del registro:
+
+```java
+private void setupActionBar() {
+ActionBar actionBar = getSupportActionBar();
+
+        actionBar.setDisplayHomeAsUpEnabled(true);
+
+        mViewModel.getShoppingList().observe(this,
+                shoppingList -> actionBar.setTitle(shoppingList.getName())
+        );
+}
+```
+
+Si ejecutas el proyecto y, como ejemplo, seleccionas la **«Lista 4»** deberías ver lo siguiente:
+
+<img src="img/edicion-lista-de-compras-616x1300.png" width="300" alt="Edición_lista_compras">
+
