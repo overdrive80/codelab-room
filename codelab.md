@@ -531,7 +531,7 @@ En este tutorial verás cómo insertar datos con Room desde una actividad de cre
 
 Recuerda que puedes ver el alcance general de este ejemplo en la [**descripción de la App**](https://www.develou.com/ejemplo-de-room/).
 
-Al haber [**creado la base de datos**]() de listas de compra, ahora agregaremos un `RecyclerView` para mejorar la vista de `MainActivity`.
+Al haber [**creado la base de datos**](https://www.develou.com/base-de-datos-room/) de listas de compra, ahora agregaremos un `RecyclerView` para mejorar la vista de `MainActivity`.
 
 Adicionalmente, pondremos un `FAB` que inicie una nueva actividad de creación. El siguiente boceto muestra nuestro plan:
 
@@ -742,7 +742,7 @@ Si ejecutas el proyecto en este punto deberías ver este resultado:
 ### 4. Añadir Actividad De Creación De Listas De Compras
 Para la actividad de **«Nueva lista»** usaremos una plantilla **Empty Activity**. El nombre de la clase será `AddShoppingListActivity`.
 
-El **layout** consta de un `EditText` y un botón de **guardar**. Abre `activity_add_shopping_list.xml` para satisfacer el diseño:
+El **layout** consta de un [**EditText**](https://www.develou.com/edittext-android/) y un [botón](https://www.develou.com/controles-tutorial-botones-android/) de **guardar**. Abre `activity_add_shopping_list.xml` para satisfacer el diseño:
 
 ```
 <?xml version="1.0" encoding="utf-8"?>
@@ -930,7 +930,7 @@ En este tutorial veremos con más detalle como consultar datos con Room y la ano
 
 > aside positive **Más específicamente**: consultar pasando uno o múltiples parámetros y como consultar solo las columnas que necesitemos.
 
-¿Cómo lo reflejaremos en nuestra [**App de listas de compras**]()?
+¿Cómo lo reflejaremos en nuestra [**App de listas de compras**](https://www.develou.com/ejemplo-de-room/)?
 
 Añadiremos un filtro simple en la actividad principal y crearemos una actividad de edición como lo ilustra el siguiente boceto:
 
@@ -943,7 +943,7 @@ Puedes descargar el código completo del proyecto desde el siguiente enlace:
 Veamos de qué va la solución.
 
 ### 1. Enlazar Un Parámetro En Una Consulta
-Los métodos anotados con `@Query` en nuestros DAOs pueden recibir parámetros con el fin de enlazarlos con argumentos de la consulta.
+Los métodos anotados con `@Query` en nuestros DAOs pueden [**recibir parámetros**](https://developer.android.com/training/data-storage/room/accessing-data#query-params) con el fin de enlazarlos con argumentos de la consulta.
 
 Para ello usamos la sintaxis `:nombre` con el fin de diferenciar el contexto.
 
@@ -961,7 +961,7 @@ LiveData<ShoppingList> getShoppingList(String id);
 De esta forma, `:id` será reemplazado por el parámetro `id`.
 
 ### 2. Enlazar Múltiples Parámetros En Una Consulta
-Con la misma lógica, Room también soporta el enlace de una lista de parámetros. La librería genera automáticamente la consulta en tiempo de ejecución, asignando cada elemento en la sentencia.
+Con la misma lógica, Room también soporta el enlace de una [lista de parámetros](https://developer.android.com/training/data-storage/room/accessing-data#query-collection-args). La librería genera automáticamente la consulta en tiempo de ejecución, asignando cada elemento en la sentencia.
 
 **Ejemplo:**
 
@@ -1083,7 +1083,7 @@ Comencemos con el filtro:
 
     ![refactorlayout](img/refactor_layout.png)
 
-2. Abre el nuevo layout, agrega como nodo raíz un `ConstraintLayout` y sitúa en la parte superior a tres etiquetas `CheckBox`. La solución sería:
+2. Abre el nuevo layout, agrega como nodo raíz un `ConstraintLayout` y sitúa en la parte superior a tres etiquetas [**CheckBox**](https://www.develou.com/checkbox-android/). La solución sería:
 
     ```
     <?xml version="1.0" encoding="utf-8"?>
@@ -1424,4 +1424,963 @@ ActionBar actionBar = getSupportActionBar();
 Si ejecutas el proyecto y, como ejemplo, seleccionas la **«Lista 4»** deberías ver lo siguiente:
 
 <img src="img/edicion-lista-de-compras-616x1300.png" width="300" alt="Edición_lista_compras">
+
+## Actualizar Datos Con Room
+En este tutorial veremos cómo actualizar datos con Room a través de la anotación `@Update`.
+
+La anotación `@Update` nos permite actualizar tanto un solo registro como múltiples a la vez dentro de una transacción. Además podemos actualizar solo las filas necesarias como en la [inserción parcial](https://www.develou.com/insertar-datos-con-room/) vista anteriormente.
+
+### La Anotación @Update
+
+La anotación `@Update` marca a un método de un DAO como un método de actualización.
+
+Como se decía al inicio, puedes modificar 1 o más filas relacionadas a una clase `@Entity`.
+
+Por ejemplo, actualizar las filas de nuestra tabla `shopping_list` desde `ShoppingListDao` se vería así:
+
+```java
+@Update
+void updateShoppingList(ShoppingList shoppingList);
+
+@Update
+void updateShoppingLists(List<ShoppingList> shoppingLists);
+```
+
+Si no quisiéramos crear toda la entidad para enviarla en actualización, entonces podemos mapear la inserción en un POJO con las columnas necesarias.
+
+Cabe resaltar que hay que especificar la propiedad `entity` con la clase.
+
+**Ejemplo:**
+
+En nuestra [App de listas de compras](https://www.develou.com/ejemplo-de-room/) necesitamos marcar las listas como favoritas. Esto implica la modificación de la columna `is_favorite` y `last_updated`. Basado en esto, creamos la siguiente clase:
+
+```java
+public class ShoppingListFavorite {
+    public String id;
+    @ColumnInfo(name = "is_favorite")
+    public boolean favorite;
+    @ColumnInfo(name = "last_updated")
+    public String lastUpdated;
+}
+```
+
+Luego en nuestro DAO añadimos un método de actualización que reciba como parámetro este tipo:
+
+```java
+@Update(entity = ShoppingList.class)
+void markFavorite(ShoppingListFavorite shoppingList);
+```
+
+Por otro lado, es importante saber que la actualización parcial también puede ser representada con la anotación `@Query` de la siguiente forma:
+
+```java
+@Query("UPDATE shopping_list SET is_favorite = NOT is_favorite WHERE id = :id)
+void markFavorite(String id);
+```
+
+Esta variante puede serte de utilidad si no deseas pasar una entidad.
+
+### Ejemplo De Actualización De Datos Con Room
+Para practicar la actualización implementaremos permitiremos al usuario marcar como favoritas las listas ya sea de forma individual o en una selección múltiple como se ve en el siguiente boceto:
+
+![boceto_favorito](img/boceto-marcar-favorito-app.png)
+
+Puedes descargar el código completo desde el siguiente enlace si deseas guiarte a la par con él:
+
+<button>[Descargar](http://develou.com/downloads/room-4-P748KuCQYk6CvCoL3Y4iHA.zip)</button>
+
+Codifiquemos la solución.
+
+### 1. Agregar Columna Para Favoritas
+Agrega un campo `boolean` llamado `is_favorite` a la entidad `ShoppingList` con un valor por defecto en `0` (`FALSE`). Modifica el constructor y agrega un método get respectivamente:
+
+```java
+@ColumnInfo(name = "is_favorite", defaultValue = "0")
+private final boolean mFavorite;
+```
+
+Ya sabes que al cambiar el esquema debemos subir la versión de la base de datos (o si quieres desinstala la App para seguir con el mismo número), por lo que vamos a `ShoppingListDatabase` y aumentamos a `3` el valor.
+
+###  2. Añadir Botón De Favorito
+Necesitamos ver el botón de la siguiente forma:
+
+![toggle_button](img/toggle-button-favorite.png)
+
+Dirígete al layout `shopping_list_item.xml` y agrega un [**CheckButton**](https://www.develou.com/checkbox-android/) al costado derecho del **layout** para representar un `toggle button`. La idea es que si es favorito se muestre el icono relleno, de lo contrario delineado.
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:app="http://schemas.android.com/apk/res-auto"
+xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:padding="@dimen/normal_padding"
+android:layout_height="?listPreferredItemHeight">
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/favorite_button"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Lista de ejemplo" />
+
+    <CheckBox
+        android:id="@+id/favorite_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:button="@drawable/sl_favorite_24"
+        app:buttonTint="@color/favorite_color"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+Añade los vectores _star_ y _star_outlined_ con forma de estrella desde **New > Vector Asset**. Y luego añade un selector llamado **sl_favorite_24.xml**, que use ambos iconos dependiendo del estado:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:drawable="@drawable/ic_star_outline_24"
+        android:state_checked="false"
+        />
+    <item
+        android:drawable="@drawable/ic_star_24"
+        android:state_checked="true"
+        />
+    <item android:drawable="@drawable/ic_star_outline_24" />
+</selector>
+```
+
+### 3. Actualizar Modelo De Listas De Compras
+Actualmente, usamos la clase `ShoppingListForList` para mostrar los datos necesarios en la lista. Para sostener a la columna `is_favorite` agregamos un campo equivalente:
+
+```java
+public class ShoppingListForList {
+    public String id;
+    public String name;
+    
+    @ColumnInfo(name = "is_favorite")
+    public boolean favorite;
+}
+```
+
+Luego bindeamos su resultado al view del ítem en el adaptador:
+
+```java
+public void bind(ShoppingListForList item) {
+    mNameText.setText(item.name);
+    mFavoriteButton.setChecked(item.favorite);
+}
+```
+Si ejecutas verás a todos las listas desmarcadas:
+
+<img src="img/listas-de-compras-desmarcadas-616x1300.png" width="300" alt="lista_desmarcadas">
+
+También es necesario cambiar los métodos de consulta en el DAO para que consultemos las tres columnas:
+
+```java
+@Query("SELECT id, name, is_favorite FROM shopping_list")
+LiveData<List<ShoppingListForList>> getAll();
+
+@Query("SELECT id, name, is_favorite FROM shopping_list WHERE category IN(:categories)")
+LiveData<List<ShoppingListForList>> getShoppingListsByCategories(List<String> categories);
+```
+
+### 4. Procesar Evento En Adaptador
+Escuchar el clic sobre el botón de favorito requiere que añadamos un nuevo método a la interfaz `ItemListener` del adaptador, que notifique a `MainActivity` dicho evento.
+
+```java
+interface ItemListener {
+    void onClick(ShoppingListForList shoppingList);
+    void onFavoriteIconClicked(ShoppingListForList shoppingList);
+}
+```
+
+El `ViewHolder` enlazara la escucha `OnClickListener` con el método `onFavoriteIconClicked()`:
+
+```java
+public class ShoppingListViewHolder extends RecyclerView.ViewHolder {
+private final TextView mNameText;
+private final CheckBox mFavoriteButton;
+
+    public ShoppingListViewHolder(@NonNull View itemView) {
+        super(itemView);
+        mNameText = itemView.findViewById(R.id.name);
+        mFavoriteButton = itemView.findViewById(R.id.favorite_button);
+
+        // Setear eventos
+        mFavoriteButton.setOnClickListener(this::manageEvents);
+        itemView.setOnClickListener(this::manageEvents);
+    }
+
+    private void manageEvents(View view) {
+        if (mItemListener != null) {
+            ShoppingListForList clickedItem = mShoppingLists.get(getAdapterPosition());
+
+            // Manejar evento de click en Favorito
+            if (view.getId() == R.id.favorite_button) {
+                mItemListener.onFavoriteIconClicked(clickedItem);
+                return;
+            }
+
+            mItemListener.onClick(clickedItem);
+        }
+    }
+
+    public void bind(ShoppingListForList item) {
+        mNameText.setText(item.name);
+        mFavoriteButton.setChecked(item.favorite);
+    }
+}
+```
+
+La idea es comunicarle al `ViewModel` que debe iniciar una actualización de la lista de compras con el `Id` determinado. El siguiente código muestra como:
+
+```java
+// Asignar escucha de ítems
+mAdapter.setItemListener(new ShoppingListAdapter.ItemListener() {
+    
+    @Override
+    public void onClick(ShoppingListForList shoppingList) {
+    editShoppingList(shoppingList);
+    }
+
+    @Override
+    public void onFavoriteIconClicked(ShoppingListForList shoppingList) {
+        mViewModel.markFavorite(shoppingList);
+    }
+});
+```
+
+### 5. Propagar Acciones Hacia ViewModel Y Repositorio
+En `ShoppingListViewModel` crearemos el método `markFavorite()` como una envoltura para el repositorio de listas de compras.
+
+```java
+public void markFavorite(ShoppingListForList shoppingList) {
+    ShoppingListFavorite favorite = new ShoppingListFavorite();
+    favorite.id = shoppingList.id;
+    favorite.favorite = !shoppingList.favorite;
+    favorite.lastUpdated = new SimpleDateFormat(
+            "yyyy-MM-dd HH:mm:ss",
+            Locale.getDefault())
+            .format(new Date());
+    mRepository.markFavorite(favorite);
+}
+```
+
+Preparamos uno objeto `ShoppingListFavorite` con el `id`, la negación del estado actual de favoritismo y la obtención de la fecha con el formato que tenemos actualmente.
+
+Acto seguido, nos creamos un método equivalente en el repositorio, para llamar el método `markFavorite()` de `ShoppingListDao` en un hilo separado:
+
+```java
+public void markFavorite(ShoppingListFavorite shoppingLists) {
+    ShoppingListDatabase.dbExecutor.execute(
+            () -> mShoppingListDao.markFavorite(shoppingLists)
+    );
+}
+```
+
+Finalmente, si has seguido todos los pasos anteriores, ejecuta y marca como favoritas las que desees. Verás el siguiente resultado y como estos valores persisten localmente:
+
+<img src="img/listas-de-compras-favoritas-616x1300.png" width="300" alt="lista_favoritas">
+
+## Eliminar Datos Con Room
+En este tutorial aprenderás a eliminar datos con Room con la anotación `@Delete`.
+
+Al igual que `@Insert` y `@Update`, es posible eliminar uno o varios registros de la base de datos y usar POJOs arbitrarios para especificar columnas particulares.
+
+### La Anotación @Delete
+Para especificar que un método de un DAO será para eliminación márcalo con **[`@Delete`](https://developer.android.com/training/data-storage/room/accessing-data#convenience-delete)**.
+
+Sus parámetros deben ser objetos anotados con `@Entity`. Similar a las demás operaciones, Room flexibiliza la cantidad de filas que deseamos eliminar.
+
+**Ejemplo**: Eliminar una, tres listas o una lista dinámica de listas de compras:
+
+```java
+@Delete
+void deleteShoppingList(ShoppingList shoppingList);
+
+@Delete
+void deleteShoppingLists(ShoppingList... shoppingLists);
+
+@Delete
+void deleteShoppingLists(List<ShoppingList> shoppingLists);
+```
+
+Si deseamos eliminar dependiendo de los valores de unas cuantas columnas, entonces podemos pasar un POJO que represente esta necesidad y lo asociamos con la propiedad entity.
+
+**Ejemplo**: Crea una entidad llamada `ShoppingListId` para eliminar una lista de compras por su `ID`.
+
+```java
+public class ShoppingListId {
+    public String id;
+
+    public ShoppingListId(String id) {
+        this.id = id;
+    }
+}
+```
+
+Luego creamos un método en el DAO que reciba el objeto para que Room lo interprete como una entidad parcial:
+
+```java
+@Delete(entity = ShoppingList.class)
+void deleteShoppingList(ShoppingListId shoppingList);
+```
+
+Por otro lado, si quieres borrar todos los elementos de la tabla, debes acudir a la anotación `@Query` para ordenar la operación `DELETE`:
+
+```java
+@Query("DELETE FROM shopping_list");
+void deleteAllShoppingLists();
+```
+
+O si quieres eliminar por `Id` a través de parámetros **bindeables**, entonces:
+
+```java
+@Query("DELETE FROM shopping_list WHERE id=:id")
+void deleteShoppingList(String id);
+```
+
+### Ejemplo Para Eliminar Datos Con Room
+Para demostrar la eliminación añadiremos dos pequeños casos de uso a nuestra [**App de listas de compras**](https://www.develou.com/ejemplo-de-room/) como se ve en el siguiente prototipo:
+
+![proto_eliminar](img/prototipo-app-eliminar-listas-de-compras.png)
+
+El primero es la eliminación individual desde el ítem de la lista y el segundo es la eliminación de todas las listas desde el overflow de la [**Toolbar**](https://www.develou.com/toolbar-en-android-creacion-de-action-bar-en-material-design).
+
+A continuación vamos a ver los pasos principales para el desarrollo. Si deseas descargar el código para guiarte, usa el siguiente enlace:
+
+<button>[Descargar](http://develou.com/downloads/room-5-2W2ykrzxe0SnPGTQmSBsrg.zip)</button>
+
+### Eliminar Lista De Compras Por Id
+Esta característica nace del clic del usuario en un botón que existe en el ítem. Sabiendo esto, agreguémoslo al **layout**, procesemos el evento y propaguemos el evento hacia el `ViewModel` y el `Repositorio`.
+
+![boton_eliminar](img/action-button-eliminar.png)
+
+### 1. Agregar Botón De Eliminar
+Abre `shopping_list_item.xml` y posiciona al lado del botón de favorito, un `ImageView` que represente el ítem de acción para eliminar. Usa como icono el **vector asset** llamado **delete**.
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:padding="@dimen/normal_padding"
+    android:layout_height="?listPreferredItemHeight">
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/favorite_button"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Lista de ejemplo" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/favorite_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginRight="8dp"
+        android:button="@drawable/sl_favorite_24"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        app:buttonTint="@color/favorite_color"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/delete_button"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/delete_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/ic_delete_24" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+### 2. Procesar Clic En El Adaptador
+De la misma forma que hicimos con el botón de favoritos, agrega un método para la eliminación:
+
+```java
+interface ItemListener {
+    void onClick(ShoppingListForList shoppingList);
+    void onFavoriteIconClicked(ShoppingListForList shoppingList);
+    void onDeleteIconClicked(ShoppingListForList shoppingList);
+}
+```
+
+Luego asigna una escucha `OnClickListener` para que `onDeleteIconClicked()` sea disparado en la actividad principal:
+
+```java
+public class ShoppingListViewHolder extends RecyclerView.ViewHolder {
+    private final TextView mNameText;
+    private final CheckBox mFavoriteButton;
+    private final ImageView mDeleteButton;
+
+    public ShoppingListViewHolder(@NonNull View itemView) {
+        super(itemView);
+        mNameText = itemView.findViewById(R.id.name);
+        mFavoriteButton = itemView.findViewById(R.id.favorite_button);
+        mDeleteButton = itemView.findViewById(R.id.delete_button);
+
+        // Setear eventos
+        mFavoriteButton.setOnClickListener(this::manageEvents);
+        mDeleteButton.setOnClickListener(this::manageEvents);
+        itemView.setOnClickListener(this::manageEvents);
+    }
+
+    private void manageEvents(View view) {
+        if (mItemListener != null) {
+            ShoppingListForList clickedItem = mShoppingLists.get(getAdapterPosition());
+
+            // Manejar evento de click en Favorito
+            if (view.getId() == R.id.favorite_button) {
+                mItemListener.onFavoriteIconClicked(clickedItem);
+                return;
+            } else if (view.getId() == R.id.delete_button) {
+                mItemListener.onDeleteIconClicked(clickedItem);
+                return;
+            }
+
+            mItemListener.onClick(clickedItem);
+        }
+    }
+
+    public void bind(ShoppingListForList item) {
+        mNameText.setText(item.name);
+        mFavoriteButton.setChecked(item.favorite);
+    }
+}
+```
+
+### 3. Propagar Acción Al ViewModel Y Repositorio
+Ve a `MainActivity` y sobrescribe el método anteriormente creado. Este debe ejecutar un nuevo método de `ShoppinListViewModel` llamado `deleteShoppingList()`, el cuál recibe como parámetro la lista de compras:
+
+```java
+// Asignar escucha de ítems
+mAdapter.setItemListener(new ShoppingListAdapter.ItemListener() {
+@Override
+public void onClick(ShoppingListForList shoppingList) {
+editShoppingList(shoppingList);
+}
+
+    @Override
+    public void onFavoriteIconClicked(ShoppingListForList shoppingList) {
+        mViewModel.markFavorite(shoppingList);
+    }
+
+    @Override
+    public void onDeleteIconClicked(ShoppingListForList shoppingList) {
+        mViewModel.deleteShoppingList(shoppingList);
+    }
+});
+```
+
+El método `deleteShoppingList()` mapeará el objeto entrante al POJO parcial que construimos. Asignando el `id` correspondiente:
+
+```java
+public void deleteShoppingList(ShoppingListForList shoppingList) {
+    ShoppingListId id = new ShoppingListId(shoppingList.id);
+    mRepository.deleteShoppingList(id);
+}
+```
+
+Ahora en el método equivalente del repositorio creamos un nuevo hilo y ejecutamos la eliminación desde el DAO.
+
+```java
+public void deleteShoppingList(ShoppingListId id) {
+    ShoppingListDatabase.dbExecutor.execute(
+            () -> mShoppingListDao.deleteShoppingList(id)
+    );
+}
+```
+
+Al ejecutar el proyecto debes ver los ítems con su icono de eliminación. Y si pruebas cliquear desaparecerán de la lista.
+
+<img src="img/listas-antes-de-eliminar-616x1300.png" width="300" alt="listas-antes-eliminar"> <img src="img/lista-luego-de-eliminar-616x1300.png" width="300" alt="listas-luego-eliminar">
+
+### Eliminar Todas Las Listas De Compras
+Esta acción es ejecutada desde un ítem de acción que se encuentra en el **overflow** de la `Toolbar`. Al igual que el caso anterior, agreguemos este botón, procesemos su clic y propaguemos las acciones hacia la capa de datos.
+
+![action_button](img/action-button-para-eliminar-todas-las-listas-de-compras.png)
+
+### 1. Añadir Action Button Para Eliminar
+Crea un recurso de menú llamado `main_menu.xml` y agrega el ítem de eliminación:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/delete_all"
+        android:title="@string/delete_all"
+        app:showAsAction="never" />
+</menu>
+```
+
+### 2. Procesar Evento De Action Button
+Luego, ve a la actividad principal y añade los métodos `onCreateOptionsMenu()` para inflar el recurso anterior y `onOptionsItemSelected()` para detectar el evento de clic:
+
+```java
+@Override
+public boolean onCreateOptionsMenu(Menu menu) {
+    getMenuInflater().inflate(R.menu.main_menu, menu);
+    return true;
+}
+
+@Override
+public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+int itemId = item.getItemId();
+
+    if (R.id.delete_all == itemId) {
+        mViewModel.deleteAll();
+        return true;
+    }
+
+    return super.onOptionsItemSelected(item);
+}
+```
+
+### 3. Actualizar ViewModel Y Repositorio
+Repetimos las tareas anteriores. Propagamos la acción de eliminación total desde el `ViewModel` con un nuevo método llamado `deleteAll()`.
+
+```java
+public void deleteAll() {
+    mRepository.deleteAll();
+}
+```
+El repositorio abrirá el hilo de trabajo y ejecutará el método de eliminación del DAO:
+
+```java
+public void deleteAll() {
+    ShoppingListDatabase.dbExecutor.execute(
+            mShoppingListDao::deleteAllShoppingLists
+    );
+}
+```
+Y finalmente tendremos ambas características implementadas. Ejecuta y al presionar el ítem de eliminación de todas las listas verás:
+
+<img src="img/click-en-eliminar-todas-616x1300.png" width="300" alt="eliminar-todas"> <img src="img/listas-eliminadas-616x1300.png" width="300" alt="listas-eliminadas">
+
+## Relaciones uno a uno
+En este tutorial veremos cómo implementar relaciones uno a uno con Room entre nuestras tablas.
+
+Para ello, aprenderemos que son los [**objetos embebidos**](https://developer.android.com/training/data-storage/room/relationships#nested-objects) (`@Embedded`), como establecer las anotaciones `@Relation` para la [**relación `1:1`**](https://developer.android.com/training/data-storage/room/relationships#one-to-one) y establecer **claves foráneas**.
+
+### Que Son Embedded Objects
+La anotación `@Embedded` marca un campo de una `@Entity` o POJO como un objeto anidado.
+
+Es decir, un objeto que es interpretado como parte de otro.
+
+Si el campo está en una entidad, entonces los atributos del objeto anidado serán tomados como columnas de la tabla.
+
+**Ejemplo:**
+
+Si removemos las fechas de creación y última actualización de nuestra entidad `ShoppingList` en otra clase:
+
+```java
+public class Life {
+    @ColumnInfo(name = "created_date", defaultValue = "CURRENT_TIMESTAMP")
+    public String createdDate;
+
+    @ColumnInfo(name = "last_updated", defaultValue = "CURRENT_TIMESTAMP")
+    public String lastUpdated;
+}
+```
+
+Podemos decirle a Room que aún son parte de la tabla `shopping_list` usando `@Embedded` en un campo del tipo que contiene ambos atributos:
+
+```java
+@Entity(tableName = "shopping_list")
+public class ShoppingList {
+
+    @Embedded
+    public Life life;
+}
+```
+
+### Relaciones Uno A Uno
+Una relación uno a uno (1:1) es: una relación donde cada instancia de la entidad padre está asociada con una y solo una instancia de la entidad hija.
+
+Partamos de un ejemplo que aplicaremos en nuestra [**App de listas de compras**](https://www.develou.com/ejemplo-de-room/).
+
+![diagrama_er](img/app-listas-de-compras-der-2.png)
+
+Decidiremos que la tabla `shoping_list` ahora tendrá una relación `1:1` con una nueva tabla llamada `info`.
+
+**¿Cómo implementar esta relación en Room?**
+
+Seguiremos los siguientes pasos:
+
+**Paso 1**: Añadir campo de referencia a la clave primaria de la entidad hija. Al crear la entidad `Info` pondremos el `Id` de `ShoppingList`:
+
+```java
+@Entity(tableName = "info")
+public class Info {
+    @NonNull
+    @PrimaryKey
+    public String id;
+
+    @NonNull
+    @ColumnInfo(name = "shopping_list_id")
+    public String shoppingListId;
+
+    @ColumnInfo(name = "created_date", defaultValue = "CURRENT_TIMESTAMP")
+    public String createdDate;
+
+    @ColumnInfo(name = "last_updated", defaultValue = "CURRENT_TIMESTAMP")
+    public String lastUpdated;
+
+    public Info(@NonNull String id, @NonNull String shoppingListId,
+                String createdDate, String lastUpdated) {
+        this.id = id;
+        this.shoppingListId = shoppingListId;
+        this.createdDate = createdDate;
+        this.lastUpdated = lastUpdated;
+    }
+
+}
+```
+
+**Paso 2**: Crear una clase que contenga una instancia embebida de la clase padre (o POJO parcial de la misma) y otra de la hija anotada con `@Relation`.
+
+```java
+public class ShoppingListAndInfo {
+    @Embedded
+    public ShoppingListForList shoppingList;
+
+    @Relation(
+            parentColumn = "id",
+            entityColumn = "shopping_list_id"
+    )
+    public Info info;
+}
+```
+
+Donde, la propiedad `parentColumn` es para el nombre de la clave primaria del padre y `entityColumn` para el nombre de la **clave foránea** en la hija.
+
+**Paso 3**: Añadir método de retorno en el DAO en una transacción, ya que son dos consultas (`@Transaction`):
+
+```java
+@Dao
+public abstract class ShoppingListDao {
+    @Transaction
+    @Query("SELECT id, name, is_favorite FROM shopping_list")
+    abstract LiveData<List<ShoppingListAndInfo>> getAll();
+
+    @Transaction
+    @Query("SELECT id, name, is_favorite FROM shopping_list WHERE category IN(:categories)")
+    abstract LiveData<List<ShoppingListAndInfo>> getShoppingListsByCategories(List<String> categories);
+}
+```
+Como ves, estamos pasando de interfaz a clase abstracta en el DAO, ya que operar relaciones requiere más de un método en la mayoría de casos.
+
+### Declarar Llaves Foráneas
+Para especificar una restricción foránea entre dos entidades de Room usaremos la anotación `@ForeignKey`.
+
+Ubicaremos esta anotación en la entidad hija como parte de la propiedad `foreignKeys`.
+
+**Ejemplo:**
+
+Agregar una referencia foránea para `shoppingListId` en Info:
+
+```java 
+@Entity(tableName = "info",
+        foreignKeys = @ForeignKey(
+        entity = ShoppingList.class,
+        parentColumns = "id",
+        childColumns = "shopping_list_id")
+)
+public class Info {
+
+    @NonNull
+    @ColumnInfo(name = "shopping_list_id")
+    public String shoppingListId;
+
+}
+```
+
+### Ejemplo De Relaciones Uno A Uno Con Room
+En este corto ejemplo mostraremos los resultados del DAO que mapea la relación `1:1` entre las listas de compras y su información temporal.
+
+Para ello aumentaremos el contenido del layout de cada ítem en la actividad principal, agregando un texto para la fecha de creación y mejorando el diseño con [CardViews](https://www.develou.com/android-recyclerview-cardview/):
+
+![Relaciones Uno A Uno Con Room](img/app-listas-de-compras-prototipo-relacion-uno-uno-room-1.png)
+
+Puedes descargar el código final con las modificaciones desde el siguiente enlace:
+
+<button>[Descargar](https://www.develou.com/downloads/room-6-6rrghZm580ygD7LYdcWRZA.zip)</button>
+
+Habrán algunas modificaciones que omitiré, por lo que te vendría muy bien decargarlo si no puedes realizarlas por ti mism@.
+
+Veamos los pasos generales para llegar al resultado deseado:
+
+### 1. Agregar Entidad A La Base De Datos
+Añade a la propiedad `entities` la nueva entidad que hemos declarado para los metadatos de las listas de compras:
+
+```java
+@Database(entities = {ShoppingList.class, Info.class}, version = 4, exportSchema = false)
+public abstract class ShoppingListDatabase extends RoomDatabase {
+}
+```
+
+Ahí mismo sube el número de versión a `4` para actualizar el esquema.
+
+### 2. Insertar Lista De Compras Junto A Info
+Al mover las columnas de la tabla `shopping_list` es necesario insertar la lista junto al registro de la info en un método del DAO de la siguiente forma:
+
+```java
+@Transaction
+public void insertWithInfo(ShoppingListInsert shoppingList, Info info) {
+    insertShoppingList(shoppingList);
+    insertInfo(info);
+}
+
+@Transaction
+public void insertAllWithInfos(List<ShoppingListInsert> shoppingLists, List<Info> infos) {
+    insertAll(shoppingLists);
+    insertAllInfos(infos);
+}
+
+@Insert(onConflict = OnConflictStrategy.IGNORE, entity = ShoppingList.class)
+abstract void insertShoppingList(ShoppingListInsert shoppingList);
+
+@Insert(onConflict = OnConflictStrategy.IGNORE, entity = ShoppingList.class)
+abstract void insertAll(List<ShoppingListInsert> lists);
+
+@Insert(onConflict = OnConflictStrategy.IGNORE)
+abstract void insertInfo(Info info);
+
+@Insert(onConflict = OnConflictStrategy.IGNORE)
+abstract void insertAllInfos(List<Info> infos);
+```
+
+En este caso `insertWithInfo`() e `insertAllWithInfos`() insertan una lista de compras junto a su información de fechas
+
+Al ser dos operaciones de inserción anotamos el método con `@Transaction`.
+
+Esto modificaría la prepoblación que hacemos en la base de datos:
+
+```java
+// Prepoblar base de datos con callback
+private static final RoomDatabase.Callback mRoomCallback = new Callback() {
+    @Override
+    public void onOpen(@NonNull SupportSQLiteDatabase db) {
+    super.onCreate(db);
+
+        dbExecutor.execute(() -> {
+            ShoppingListDao dao = INSTANCE.shoppingListDao();
+
+            List<ShoppingListInsert> lists = new ArrayList<>();
+            List<Info> infos = new ArrayList<>();
+
+            for (int i = 0; i < 5; i++) {
+
+                // Crear lista de compras
+                ShoppingListInsert shoppingList = new ShoppingListInsert(
+                        String.valueOf((i + 1)),
+                        "Lista " + (i + 1)
+                );
+
+                // Crear info
+                String date = Utils.getCurrentDate();
+                Info info = new Info(String.valueOf((i+1)),
+                        shoppingList.id, date, date);
+
+                lists.add(shoppingList);
+                infos.add(info);
+            }
+
+            dao.insertAllWithInfos(lists, infos);
+        });
+    }
+};
+```
+
+Y se propaga desde la actividad principal hacia el repositorio al momento de agregar una nueva lista de compras:
+
+```java
+public void insert(ShoppingListInsert shoppingList) {
+    String date = Utils.getCurrentDate();
+    Info info = new Info(UUID.randomUUID().toString(), shoppingList.id, date, date);
+    mRepository.insert(shoppingList, info);
+}
+```
+
+### 3. Crear Transacción Para Marcar Favorito
+Otro cambio en el DAO que tenemos que hacer es cambiar el método `markFavorite()` por dos actualizaciones, ya que intercambiamos el valor de `shopping_list.is_favorite` y el de `info.last_updated` al presionar el botón de favorito.
+
+```java
+@Transaction
+public void markFavorite(String id) {
+    updateShoppingListFavorite(id);
+    updateInfoLastUpdated(id);
+}
+
+@Query("UPDATE shopping_list SET is_favorite= NOT is_favorite WHERE id = :id")
+protected abstract void updateShoppingListFavorite(String id);
+
+@Query("UPDATE info SET last_updated = CURRENT_TIMESTAMP WHERE shopping_list_id=:shoppingListId")
+protected abstract void updateInfoLastUpdated(String shoppingListId);
+```
+
+### 4. Actualizar Diseño De Layout
+Para llegar al diseño propuesto en el prototipo debemos agregar como tag raíz un `CardView` que contenga al `ConstraintLayout` actual. Y dos `TextViews` para la etiqueta de la fecha de creación y su valor.
+
+![item_lista](img/layout-item-lista-de-compras.png)
+
+La siguiente es la definición XML con los cambios:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:app="http://schemas.android.com/apk/res-auto"
+xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:layout_marginBottom="8dp"
+android:layout_marginLeft="8dp"
+android:layout_marginRight="8dp"
+android:layout_height="wrap_content">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="?listPreferredItemHeightLarge"
+        android:padding="@dimen/normal_padding">
+
+
+        <TextView
+            android:id="@+id/name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/favorite_button"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            tools:text="Lista de ejemplo" />
+
+        <TextView
+            android:id="@+id/created_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?textAppearanceCaption"
+            tools:text="26/05/2020 01:12:54"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/name"
+            app:layout_constraintVertical_bias="1.0" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/favorite_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:layout_marginRight="8dp"
+            android:button="@drawable/sl_favorite_24"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:buttonTint="@color/favorite_color"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/delete_button"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0" />
+
+        <ImageView
+            android:id="@+id/delete_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            app:srcCompat="@drawable/ic_delete_24" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>
+```
+
+### 5. Usar Clase De Relación Uno A Uno
+Reemplaza en el adaptador la lista de datos `ShoppingListForList` por `ShoppingListAndInfo`. Luego bindea la fecha de creación en el `ViewHolder`.
+
+```java
+public class ShoppingListViewHolder extends RecyclerView.ViewHolder {
+    private final TextView mNameText;
+    private final CheckBox mFavoriteButton;
+    private final ImageView mDeleteButton;
+    private TextView mCreatedDateText;
+
+    public ShoppingListViewHolder(@NonNull View itemView) {
+        super(itemView);
+        mNameText = itemView.findViewById(R.id.name);
+        mCreatedDateText = itemView.findViewById(R.id.created_date);
+        mFavoriteButton = itemView.findViewById(R.id.favorite_button);
+        mDeleteButton = itemView.findViewById(R.id.delete_button);
+
+        // Setear eventos
+        mFavoriteButton.setOnClickListener(this::manageEvents);
+        mDeleteButton.setOnClickListener(this::manageEvents);
+        itemView.setOnClickListener(this::manageEvents);
+    }
+
+    private void manageEvents(View view) {
+        if (mItemListener != null) {
+            ShoppingListAndInfo clickedItem = mShoppingLists.get(getAdapterPosition());
+
+            // Manejar evento de click en Favorito
+            if (view.getId() == R.id.favorite_button) {
+                mItemListener.onFavoriteIconClicked(clickedItem);
+                return;
+            } else if (view.getId() == R.id.delete_button) {
+                mItemListener.onDeleteIconClicked(clickedItem);
+                return;
+            }
+
+            mItemListener.onClick(clickedItem);
+        }
+    }
+
+    public void bind(ShoppingListAndInfo item) {
+        mNameText.setText(item.shoppingList.name);
+        mFavoriteButton.setChecked(item.shoppingList.favorite);
+        mCreatedDateText.setText(item.info.createdDate);
+    }
+}
+```
+
+### 6. Actualiza El ViewModel Y Repositorio
+Propaga el cambio en el consturctor de `ShoppingListViewModel` para que el repositorio use como tipo de retorno la nueva entidad de relación en los métodos `getAll()` y `getShoppingListsWithCategories()`.
+
+```java
+public LiveData<List<ShoppingListAndInfo>> getShoppingLists() {
+return mShoppingListDao.getAll();
+}
+
+public LiveData<List<ShoppingListAndInfo>> getShoppingListsWithCategories(List<String> categories) {
+return mShoppingListDao.getShoppingListsByCategories(categories);
+}
+```
+
+Una vez realizados los cambios, ejecuta el proyecto y verás los registros finales de la relación uno a uno en la interfaz:
+
+<img src="img/app-listas-de-compras-relacion-one-to-one-616x1300.png" width="300" alt="lista_uno_uno">
+
+
+
 
