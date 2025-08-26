@@ -1,0 +1,465 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>Guía de la API Room</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/claat-public/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14" ga4id=""></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  codelab-ga4id=""
+                  id="guia-room"
+                  title="Guía de la API Room"
+                  environment="web"
+                  feedback-link="">
+    
+      <google-codelab-step label="Empezando Con Room" duration="10">
+        <h2 is-upgraded>Introducción A Room</h2>
+<p>En este artículo veremos una introducción a Room, una librería de Android que provee una capa de abstracción sobre SQLite, para acceso a bases de datos.</p>
+<p>Esta simplifica todas las creaciones del esquema de una base de datos, las relaciones entre ellas y sus operaciones SQL.</p>
+<p>Por esta razón aumentará nuestra productividad en comparación al uso del paquete nativo <a href="https://www.develou.com/android-sqlite-bases-de-datos/" target="_blank"><strong>android.database.sqlite</strong></a>.</p>
+<p>La siguiente es la apertura a una serie de tutoriales para aprender a usar la librería.</p>
+<h2 is-upgraded>Componentes De Arquitectura</h2>
+<p>Room es el componente de arquitectura encargado de la persistencia local en la capa de datos de nuestras apps Android.</p>
+<p>El siguiente es un diagrama genérico donde vemos como se relaciona con los componentes <a href="https://www.develou.com/android-viewmodel/" target="_blank"><strong>ViewModel</strong></a> y <a href="https://www.develou.com/android-livedata/" target="_blank"><strong>LiveData</strong></a>.</p>
+<p class="image-container"><img alt="MVVC" src="img\\77447fa64496aa1e.png"></p>
+<p>Donde el <a href="https://martinfowler.com/eaaCatalog/repository.html" target="_blank"><strong>Repositorio</strong></a> es una clase encargada de encapsular la lógica requerida para acceder a las fuentes de datos como <strong>Room</strong>.</p>
+<p>Este no hace parte de los componentes de arquitectura de Android, pero es un patrón que Google recomienda usar.</p>
+<p>De esta forma los datos fluyen desde los controladores de UI hasta llegar a <strong>SQLite</strong> y operar el conjunto de datos.</p>
+<p>Y es justo allí donde estaremos trabajando en esta serie de tutoriales.</p>
+<h2 is-upgraded>Componentes De Room</h2>
+<p>En el diagrama anterior vimos varios objetos asociados a Room. Veamos de qué se tratan.</p>
+<h3 is-upgraded>RoomDatabase</h3>
+<p>Es el punto de entrada principal para comunicar el resto de tu app con el esquema relacional de datos.</p>
+<p>Esta clase nos oculta la implementación de <a href="https://developer.android.com/reference/android/database/sqlite/SQLiteOpenHelper" target="_blank"><strong>SQLiteOpenHelper</strong></a> para facilitarnos el acceso a la base de datos.</p>
+<p>Al extender esta clase veremos algo así:</p>
+<pre><code language="language-java" class="language-java">@Database(entities = {Product.class}, version = 1)
+public abstract class ProductsDatabase extends RoomDatabase {
+    public abstract ProductDao productDao();
+}
+</code></pre>
+<h3 is-upgraded>Data Access Object (DAO)</h3>
+<p>Un DAO representa un mapeado de operaciones SQL a métodos.</p>
+<p>Lo que quiere decir que crearemos, leeremos, actualizaremos y eliminaremos registros desde ellos.</p>
+<p>Las operaciones se verán así normalmente:</p>
+<pre><code language="language-java" class="language-java">@Dao
+public interface ProductDao {
+@Query(&#34;SELECT * FROM product&#34;)
+List&lt;Product&gt; getAll();
+
+    @Insert
+    void insert(Product product);
+
+    @Delete
+    void delete(Product product);
+}
+</code></pre>
+<h3 is-upgraded>Entity</h3>
+<p>La clase anotada que describe una tabla de la base de datos en Room.</p>
+<p>Es decir, un mapeado del comando CREATE de una tabla en SQLite.</p>
+<p>Ejemplo:</p>
+<pre><code language="language-java" class="language-java">@Entity
+public class Product {
+@PrimaryKey
+public String id;
+
+    @ColumnInfo(name = &#34;product_name&#34;)
+    public String name;
+
+    @ColumnInfo(name = &#34;product_price&#34;)
+    public float price;
+}
+</code></pre>
+<h2 is-upgraded>Implementar Room</h2>
+<p>Para usar esta librería seguiremos los siguientes pasos:</p>
+<ol type="1">
+<li>Añadir dependencia de Room a Gradle</li>
+<li>Crear una Entity por cada modelo</li>
+<li>Crear DAOs</li>
+<li>Crear subclase de RoomDatabase</li>
+<li>Crear Repositorio</li>
+<li>Testear capa de datos</li>
+<li>Testear Migraciones</li>
+</ol>
+<p>Veremos cómo aplicar cada uno en esta serie de tutoriales, donde crearemos como <a href="https://www.develou.com/ejemplo-de-room/" target="_blank"><strong>ejemplo</strong></a> una App sobre listas de compras.</p>
+<p>Adicionalmente cubriremos características como:</p>
+<ul>
+<li>CRUDs</li>
+<li>Relaciones (uno a uno, 1 a muchos, muchos a muchos)</li>
+<li>Relaciones (uno a uno, 1 a muchos, muchos a muchos)</li>
+<li>Búsquedas</li>
+<li>Vistas</li>
+<li>Etc.</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Crear Una Base De Datos Room" duration="10">
+        <p>En este tutorial vamos a crear una base de datos Room para una App Android de <a href="https://www.develou.com/ejemplo-de-room/" target="_blank"><strong>ejemplo sobre listas de compras</strong></a>.</p>
+<p>El objetivo es crear los componentes vistos en la <a href="https://www.develou.com/introduccion-a-room/" target="_blank"><strong>introducción a Room</strong></a> con el fin de mostrar las listas de compras en un TextView. E ilustrar el funcionamiento de la librería y sus componentes.</p>
+<p class="image-container"><img alt="Shoppinglist" src="img\\680e7958c0541c59.png"></p>
+<p>Puedes descargar el resultado final del tutorial desde el siguiente enlace:</p>
+<p><a href="http://develou.com/downloads/room-1.zip" target="_blank"><strong>Descargar</strong></a></p>
+<p>Empecemos el desarrollo.</p>
+<h2 is-upgraded>1. Crear Proyecto En Android Studio</h2>
+<ol type="1">
+<li>Abre Android Studio y crea un nuevo proyecto</li>
+<li>Selecciona una <strong>Empty Activity</strong> y presiona <strong>Next</strong></li>
+<li>Nombra al aplicativo como <em>Shopping List</em> y presiona <strong>Finish</strong>.</li>
+</ol>
+<p class="image-container"><img alt="Androidstudio" src="img\\24582f1c24c6ea4c.png"></p>
+<h2 is-upgraded>2. Añadir Dependencias Gradle De Room</h2>
+<ol type="1">
+<li>Abre tu archivo <strong>build.gradle</strong> del módulo y agrega las siguiente dependencias:<pre><code language="language-java" class="language-java">dependencies {
+
+    implementation &#34;androidx.appcompat:appcompat:$appCompatVersion&#34;
+
+    // Room
+    implementation &#34;androidx.room:room-runtime:$roomVersion&#34;
+    annotationProcessor &#34;androidx.room:room-compiler:$roomVersion&#34;
+
+    // Lifecycle
+    implementation &#34;androidx.lifecycle:lifecycle-viewmodel:$lifecycleVersion&#34;
+    implementation &#34;androidx.lifecycle:lifecycle-livedata:$lifecycleVersion&#34;
+    implementation &#34;androidx.lifecycle:lifecycle-common-java8:$lifecycleVersion&#34;
+
+    // UI
+    implementation &#34;com.google.android.material:material:$materialVersion&#34;
+    implementation &#34;androidx.constraintlayout:constraintlayout:$contraintLayoutVersion&#34;
+
+    // Testing
+    testImplementation &#34;junit:junit:$junitVersion&#34;
+    androidTestImplementation &#34;androidx.test.ext:junit:$androidxJunitVersion&#34;
+    androidTestImplementation &#34;androidx.test.espresso:espresso-core:$espressoVersion&#34;
+}
+</code></pre>
+</li>
+<li>Ahora abre <strong>build.gradle</strong> del proyecto y crea un bloque llamado <code>ext</code> con el número de las versiones:<pre><code language="language-java" class="language-java">ext {
+appCompatVersion = &#39;1.2.0&#39;
+
+    roomVersion = &#39;2.2.5&#39;
+    lifecycleVersion = &#39;2.2.0&#39;
+
+    materialVersion = &#39;1.2.1&#39;
+    contraintLayoutVersion = &#39;2.0.4&#39;
+
+    junitVersion = &#39;4.13.1&#39;
+    espressoVersion = &#39;3.3.0&#39;
+    androidxJunitVersion = &#39;1.1.2&#39;
+}
+</code></pre>
+</li>
+</ol>
+<p>Puedes obtener el número de versión más reciente desde <a href="https://developer.android.com/jetpack/androidx/versions" target="_blank"><strong>AndroidX releases</strong></a>.</p>
+<h2 is-upgraded>3. Crear Una Entidad</h2>
+<p>La primera característica que vamos a desarrollar es ver las listas de compras que existen.</p>
+<p>En este momento la entidad tiene una clave primaria y el nombre como se muestra en el siguiente esquema:</p>
+<p class="image-container"><img alt="tabla-shopping" src="img\\3db3196df7efbf83.png"></p>
+<p><strong>¿Cómo crear una entidad?</strong></p>
+<ol type="1">
+<li>Añade la clase <code>ShoppingList</code> que represente a las listas de compra. Cada atributo hará referencia a la columna en la tabla.<pre><code language="language-java" class="language-java">public class ShoppingList {
+
+
+    private final String mId;
+
+    private final String mName;
+
+    public ShoppingList(@NonNull String id, @NonNull String name) {
+        mId = id;
+        mName = name;
+    }
+
+    public String getId() {
+        return mId;
+    }
+
+    public String getName() {
+        return mName;
+    }
+}
+</code></pre>
+</li>
+<li>Actualiza el modelo con las siguientes anotaciones:<pre><code language="language-java" class="language-java">@Entity(tableName = &#34;shopping_list&#34;)
+public class ShoppingList {
+
+    @PrimaryKey
+    @NonNull
+    @ColumnInfo(name = &#34;id&#34;)
+    private final String mId;
+
+    @NonNull
+    @ColumnInfo(name = &#34;name&#34;)
+    private final String mName;
+
+    public ShoppingList(@NonNull String id, @NonNull String name) {
+        mId = id;
+        mName = name;
+    }
+
+    public String getId() {
+        return mId;
+    }
+
+    public String getName() {
+        return mName;
+    }
+}
+</code></pre>
+</li>
+</ol>
+<p><strong>¿Cuál es el propósito de cada una?</strong></p>
+<ul>
+<li><code>@Entity</code>: Marca una clase para ser mapeada por Room como tabla. El nombre por defecto de la tabla será el de la clase. Para especificar uno distinto usa la propiedad <code>tableName</code>.</li>
+<li><code>@PrimaryKey</code>: Marca un atributo como la clave primaria</li>
+<li><code>@ColumnInfo</code>: Permite la personalización de la columna asociada con este campo. El atributo name permite cambiar el nombre de la columna (por defecto es el nombre del campo)</li>
+<li><code>@NonNull</code>: Denota que un campo, parámetro o valor de retorno de un método no puede ser <code>null</code>. Con ella Room añade la restricción <code>NOT NULL</code> a la columna.</li>
+</ul>
+<h2 is-upgraded>4. Crear DAO</h2>
+<p>Un DAO (Data Access Object) u objeto de acceso a datos es la clase principal donde se definen las interacciones con tu base de datos.</p>
+<p>Aunque podemos tener uno solo para todos los accesos, es recomendado crear uno por cada tabla operada.</p>
+<p>Ahora bien, ¿qué acciones realizaremos en la tabla <code>shopping_list</code>?</p>
+<p>Por el momento:</p>
+<ul>
+<li>Insertar una lista de compras</li>
+<li>Obtener todas las listas de compras</li>
+</ul>
+<p>Vamos a plasmar esto creando una interfaz (también puede ser una clase abstracta) con el nombre de <code>ShoppingListDao</code> con el siguiente código:</p>
+<pre><code language="language-java" class="language-java">@Dao
+public interface ShoppingListDao {
+    @Query(&#34;SELECT * FROM shopping_list&#34;)
+    LiveData&lt;List&lt;ShoppingList&gt;&gt; getAll();
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void insert(ShoppingList shoppingList);
+}
+</code></pre>
+<p>Analicemos las partes:</p>
+<ul>
+<li><code>@Dao</code>: Marca la clase como un DAO.</li>
+<li><code>@Insert</code>: Marca un método de un DAO como una operación de inserción. Pasamos como parámetro la entidad (o colección de esta). La propiedad <code>onConflict</code> indica que hacer si existe un conflicto al insertar. <code>IGNORE</code> ignora el conflicto y mantiene la fila existente.</li>
+<li><code>@Query</code>: Marca un método de un DAO como una consulta. Usamos un <code>SELECT</code> para obtener una lista de las entidades consultadas.</li>
+</ul>
+<p>Como ves, <code>getAll()</code> retorna un <a href="https://www.develou.com/android-livedata/" target="_blank"><strong>LiveData</strong></a>. Esto se debe a que Room se las arregla para interactuar con este componente y enviarnos actualizaciones sobre cambios en el esquema de la tabla shopping_list.</p>
+<p>En los siguientes tutoriales iremos expandiendo este DAO según lo requiera la incorporación de nuevas funcionalidades.</p>
+<h2 is-upgraded>5. Crear Base De Datos Room</h2>
+<p>Habíamos dicho en la introducción que <code>RoomDatabase</code> es la clase base para todas las bases de datos en Room. Así que debes extender tu clase de base de datos de ella.</p>
+<p>Esta provee métodos de acceso directo hacia las operaciones de la base de datos Room, sin embargo deberíamos preferir usar los DAOs para ello.</p>
+<p>Crea una nueva clase abstracta llamada <code>ShoppingListDatabase</code> y agrega el siguiente código:</p>
+<pre><code language="language-java" class="language-java">@Database(entities = {ShoppingList.class}, version = 1, exportSchema = false)
+public abstract class ShoppingListDatabase extends RoomDatabase {
+
+    // Exposición de DAOs
+    public abstract ShoppingListDao shoppingListDao();
+
+    private static final String DATABASE_NAME = &#34;shopping-list-db&#34;;
+
+    private static ShoppingListDatabase INSTANCE;
+
+    private static final int THREADS = 4;
+
+    public static final ExecutorService dbExecutor = Executors.newFixedThreadPool(THREADS);
+
+    public static ShoppingListDatabase getInstance(final Context context) {
+        if (INSTANCE == null) {
+            synchronized (ShoppingListDatabase.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = Room.databaseBuilder(
+                            context.getApplicationContext(), ShoppingListDatabase.class,
+                            DATABASE_NAME)
+                            .build();
+                }
+            }
+        }
+        return INSTANCE;
+    }
+
+}
+</code></pre>
+<p>Resaltemos las características:</p>
+<ul>
+<li><code>@Database</code>: Marca la clase como una base de datos Room. Usamos las propiedades: <ul>
+<li><code>entities</code>: La lista de entidades incluidas en la base de datos.</li>
+<li><code>version</code>: Versión de la base de datos.</li>
+<li><code>exportSchema</code>: Le dice a Room que exporte el esquema.</li>
+</ul>
+</li>
+<li><strong>Exposición de DAOs</strong>: Creamos un método <code>get*()</code> abstracto por cada DAO que tengamos.</li>
+<li><strong>Singleton</strong>: Usamos este <a href="https://es.wikipedia.org/wiki/Singleton" target="_blank"><strong>patrón</strong></a> si queremos una sola instancia de la base de datos abierta (<code>INSTANCE</code> y <code>getInstance()</code>)</li>
+<li><strong>Hilos</strong>: Declaramos un <code>ExecutorService</code> para ejecutar las operaciones de bases de datos en otros hilos de trabajo y por ende no entorpecer la UI.</li>
+<li><strong>Creación de la base de datos</strong>: Pasamos al método <code>Room.databaseBuilder()</code> el contexto de la aplicación, el tipo de la clase de base de datos y el nombre de la base de datos. Al final usamos <code>build()</code> y nuestra instancia se creará.</li>
+</ul>
+<h2 is-upgraded>6. Crear Repositorio</h2>
+<p>El siguiente paso es crear la clase del repositorio de las listas de compras.</p>
+<p><strong>¿Qué debemos tener en cuenta?</strong></p>
+<ul>
+<li>Declaramos la dependencia al DAO relacionado con las listas de compra</li>
+<li>Declaramos un campo para el <a href="https://developer.android.com/topic/libraries/architecture/livedata" target="_blank"><strong>LiveData</strong></a> de las listas de compra</li>
+<li>Añadimos un método por cada operación que nos interese realizar en la tabla (<code>insert()</code> y <code>getAllShoppingLists()</code>)</li>
+</ul>
+<p>Crea la clase <code>ShoppingListRepository</code> y pega el siguiente código:</p>
+<pre><code language="language-java" class="language-java">public class ShoppingListRepository {
+private final LiveData&lt;List&lt;ShoppingList&gt;&gt; mShoppingLists;
+private final ShoppingListDao mShoppingListDao;
+
+    public ShoppingListRepository(Context context) {
+        ShoppingListDatabase db = ShoppingListDatabase.getInstance(context);
+        mShoppingListDao = db.shoppingListDao();
+        mShoppingLists = mShoppingListDao.getAll();
+    }
+
+    public LiveData&lt;List&lt;ShoppingList&gt;&gt; getAllShoppingLists() {
+        return mShoppingLists;
+    }
+
+    public void insert(ShoppingList shoppingList) {
+        ShoppingListDatabase.dbExecutor.execute(
+                () -&gt; mShoppingListDao.insert(shoppingList)
+        );
+    }
+}
+</code></pre>
+<p>En el constructor ordenaremos una carga automática de las listas de compra con el fin de recibir las notificaciones de datos lo más pronto posible.</p>
+<p>De esta forma, Room envía a otro hilo de trabajo a las consultas con <code>LiveData</code> y se asegura de comunicar los cambios a la UI.</p>
+<p>En el caso de la inserción debemos llamar al <code>ExecutorService</code> para ejecutarla en su hilo correspondiente.</p>
+<h2 is-upgraded>7. Crear ViewModel</h2>
+<p>Para crear el <a href="https://www.develou.com/android-viewmodel/" target="_blank"><strong>ViewModel</strong></a> nospreguntamos:</p>
+<p><strong>¿Cuáles son las interacciones que vendrán desde la interfaz?</strong></p>
+<p>En este momento solo vamos a insertar un par de registros programaticamente y los mostraremos en el <code>TextView</code> que aparece en el layout creado automáticamente por la plantilla <strong>Empty Activity</strong>.</p>
+<p>Por lo que observaremos la lista de listas de compras con un <code>LiveData</code> desde <code>MainActivity</code>.</p>
+<p>Esto significa que envolveremos a los métodos <code>getAllShoppingLists()</code> e <code>insert()</code> del repositorio en los del <code>ViewModel</code>.</p>
+<p>Teniendo en mente lo anterior, crea la clase <code>ShoppingListViewModel</code> y materializa estas características:</p>
+<pre><code language="language-java" class="language-java">public class ShoppingListViewModel extends AndroidViewModel {
+
+    private final ShoppingListRepository mRepository;
+
+    private final LiveData&lt;List&lt;ShoppingList&gt;&gt; mShoppingLists;
+
+    public ShoppingListViewModel(@NonNull Application application) {
+        super(application);
+        mRepository = new ShoppingListRepository(application);
+        mShoppingLists = mRepository.getAllShoppingLists();
+    }
+
+    public LiveData&lt;List&lt;ShoppingList&gt;&gt; getShoppingLists() {
+        return mShoppingLists;
+    }
+
+    public void insert(ShoppingList shoppingList) {
+        mRepository.insert(shoppingList);
+    }
+}
+</code></pre>
+<p>En el constructor cargaremos todas las listas de compra para actualizar la vista inmediatamente.</p>
+<h2 is-upgraded>8. Prepoblar La Base De Datos</h2>
+<p>Si queremos que la base de datos comience con registros predefinidos podemos hacer uso de <code>RoomDatabase#Callback</code>.</p>
+<p>Crea una <code>callback</code> en la clase de base de datos y sobrescribe su método <code>onCreate()</code> para agrega 2 listas de compras:</p>
+<pre><code language="language-java" class="language-java">// Prepoblar base de datos con callback
+private static final RoomDatabase.Callback mRoomCallback = new Callback() {
+    @Override
+    public void onCreate(@NonNull SupportSQLiteDatabase db) {
+        super.onCreate(db);
+    
+        dbExecutor.execute(() -&gt; {
+            ShoppingListDao dao = INSTANCE.shoppingListDao();
+
+            ShoppingList list1 = new ShoppingList(&#34;1&#34;, &#34;Lista de ejemplo&#34;);
+            ShoppingList list2 = new ShoppingList(&#34;2&#34;, &#34;Banquete de Navidad&#34;);
+
+            dao.insert(list1);
+            dao.insert(list2);
+        });
+     }
+};
+</code></pre>
+<p>Luego la añádela con <code>addCallback()</code> en el <code>builder</code>.</p>
+<pre><code language="language-java" class="language-java">INSTANCE = Room.databaseBuilder(
+                context.getApplicationContext(), ShoppingListDatabase.class,
+                DATABASE_NAME)
+                .addCallback(mRoomCallback)
+                .build();
+</code></pre>
+<h2 is-upgraded>9. Mostrar Datos En La Actividad</h2>
+<p>La actividad creada por defecto trae consigo un layout con un <code>TextView</code>. Algo así:</p>
+<pre><code>&lt;?xml version=&#34;1.0&#34; encoding=&#34;utf-8&#34;?&gt;
+&lt;androidx.constraintlayout.widget.ConstraintLayout xmlns:android=&#34;http://schemas.android.com/apk/res/android&#34;
+xmlns:app=&#34;http://schemas.android.com/apk/res-auto&#34;
+xmlns:tools=&#34;http://schemas.android.com/tools&#34;
+android:layout_width=&#34;match_parent&#34;
+android:layout_height=&#34;match_parent&#34;
+tools:context=&#34;.MainActivity&#34;&gt;
+
+    &lt;TextView
+        android:id=&#34;@+id/db_text&#34;
+        android:layout_width=&#34;wrap_content&#34;
+        android:layout_height=&#34;wrap_content&#34;
+        android:text=&#34;Hello World!&#34;
+        app:layout_constraintBottom_toBottomOf=&#34;parent&#34;
+        app:layout_constraintLeft_toLeftOf=&#34;parent&#34;
+        app:layout_constraintRight_toRightOf=&#34;parent&#34;
+        app:layout_constraintTop_toTopOf=&#34;parent&#34; /&gt;
+
+&lt;/androidx.constraintlayout.widget.ConstraintLayout&gt;
+</code></pre>
+<p>Finalizando, conecta ese <code>view</code> con los datos de la tabla.</p>
+<p>Es decir, obtenemos el <code>ViewModel</code> en el método <code>onCreate()</code> y observamos su contenido con <code>observe()</code>:</p>
+<pre><code language="language-java" class="language-java">public class MainActivity extends AppCompatActivity {
+
+    private ShoppingListViewModel mViewModel;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        TextView dbText = findViewById(R.id.db_text);
+
+        ViewModelProvider.AndroidViewModelFactory factory =
+                ViewModelProvider.AndroidViewModelFactory.getInstance(getApplication());
+
+        mViewModel = new ViewModelProvider(this, factory)
+                .get(ShoppingListViewModel.class);
+
+        mViewModel.getShoppingLists().observe(this, shoppingLists -&gt; {
+                    StringBuilder sb = new StringBuilder();
+                    for (ShoppingList list : shoppingLists) {
+                        sb.append(list.getName()).append(&#34;\n&#34;);
+                    }
+                    dbText.setText(sb.toString());
+                }
+        );
+    }
+}
+</code></pre>
+<p>Al usar un <code>StringBuilder</code> podemos concatenar el nombre de cada lista y proyectarlo en el texto con <code>setText()</code>.</p>
+<p>Y para terminar, ejecuta el proyecto. Deberías ver lo siguiente:</p>
+<p class="image-container"><img alt="captura_lista" style="width: 300.00px" src="img\\55b318c63d429701.png"></p>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/claat-public/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/prettify.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/codelab-elements.js"></script>
+  <script src="//support.google.com/inapp/api.js"></script>
+
+</body>
+</html>

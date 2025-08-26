@@ -1,0 +1,24 @@
+{
+  "environment": "web",
+  "format": "html",
+  "prefix": "https://storage.googleapis.com",
+  "mainga": "UA-49880327-14",
+  "updated": "2025-08-26T21:02:56+02:00",
+  "id": "guia-room",
+  "duration": 20,
+  "title": "Guía de la API Room",
+  "summary": "Guía de la API Room",
+  "source": "codelab.md",
+  "theme": "",
+  "status": [
+    "published"
+  ],
+  "category": [
+    "android",
+    "room"
+  ],
+  "tags": [
+    "android"
+  ],
+  "url": "guia-room"
+}
