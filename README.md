@@ -12,12 +12,21 @@ En una ventana de powershell:
 O instala el ejecutable: https://go.dev/dl/
 
 ## Instalar Claat
-Cierra y abre nueva ventana powershell para refrescar variables de entorno.
-Ahora ejecuta:
+1. Cierra y abre nueva ventana powershell para refrescar variables de entorno. Ahora ejecuta:
 
-	go install github.com/googlecodelabs/tools/claat@latest
+    ```
+    go install github.com/googlecodelabs/tools/claat@latest
+    ```
 
-Para ver el contenido del codelab, inicia el servidor de claat desde la carpeta del proyecto:
+2. Genera los archivos html:
 
+    ```
+    claat export codelab.md
+    ```
+
+3. Para ver el contenido del codelab, inicia el servidor de claat desde la carpeta del proyecto:
+
+    ```
     claat serve
-    start http://localhost:9090/codelab-room/
+    start http://localhost:9090/guia-room/
+    ```
