@@ -4,7 +4,7 @@ id: guia-room
 categories: android,room
 environments: Android
 status: Published
-feedback link:
+feedback link: https://github.com/overdrive80/codelab-room/issues
 
 # Guía de la API Room
 ## Empezando Con Room
