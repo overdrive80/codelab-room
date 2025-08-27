@@ -2381,6 +2381,1320 @@ Una vez realizados los cambios, ejecuta el proyecto y verás los registros final
 
 <img src="img/app-listas-de-compras-relacion-one-to-one-616x1300.png" width="300" alt="lista_uno_uno">
 
+## Relaciones Uno A Muchos Con Room
+En este tutorial aprenderás a cómo usar la anotación `@Relation` para implementar [**relaciones uno a muchos**](https://developer.android.com/training/data-storage/room/relationships#one-to-many) con Room.
+
+### Implementar Relación Uno A Muchos
+Una relación uno a muchos se da cuando una instancia de la entidad padre puede relacionarse con uno o más instancias de la entidad hija.
+
+Puedes implementarlas en Room con los siguientes pasos:
+
+**Paso 1**: Incluye una referencia a la clave primaria de la entidad padre en la entidad hija.
+
+```java
+@Entity(tableName = "parent")
+public class Parent {
+    @NonNull
+    @PrimaryKey
+    public long id;
+}
+
+@Entity(tableName = "child")
+public class Child {
+    public long parentId;
+}
+```
+
+**Paso 2**: Crea una clase de relación con un campo del tipo del padre anotado con `@Embedded`. Y otro que sea una lista del tipo de la entidad hija, anotado con `@Relation` (exactamente igual que en [**relaciones 1:1**](https://www.develou.com/relaciones-uno-a-uno-con-room/)):
+
+```java
+public class ParentWithChilds{
+    @Embedded
+    public Parent parent;
+
+    @Relation(
+            parentColumn="id", 
+            entityColumn="parentId"
+    )
+    public List<Child> childs;
+}
+```
+**Paso 3**: Y para consultar los resultados, añade un método anotado con `@Query` que retorne el tipo de la clase de relación.
+
+```java
+@Transaction
+@Query("SELECT * FROM parent")
+public List<ParentWithChilds> getParentWithChilds();
+```
+
+### Proyecciones
+
+Si deseas retornar solo algunas columnas de tu entidad que estén especificadas en un POJO, entonces agrega la propiedad `entity` especificando la entidad de la que se inferirá:
+
+```java
+public class ChildId{
+    public long id;
+}
+
+public class ParentWithChilds{
+    @Embedded
+    public Parent parent;
+
+    @Relation(
+            parentColumn="id",
+            entityColumn="parentId",
+            entity = Child.class
+    )
+    public List<ChildId> childs;
+}
+```
+
+También existen las proyecciones desplegables, que consisten en especificar a Room el nombre de las columnas específicas a consultar con la propiedad `projection`.
+
+```java
+public class ParentWithChilds{
+    @Embedded
+    public Parent parent;
+
+    @Relation(
+            parentColumn="id",
+            entityColumn="parentId",
+            entity = Child.class,
+            projection = {"id"}
+    )
+    public List<Long> childIds;
+}
+```
+
+### Ejemplo De Relaciones Uno A Muchos Con Room
+Tomemos la relación entre las tablas `shopping_list` y `collaborator` del ejemplo de la [**app de listas de compras**](https://www.develou.com/ejemplo-de-room/).
+
+![one_to_many](img/room-relaciones-uno-a-muchos-diagrama-relacional.png)
+
+Supón que quieres mostrar el nombre del colaborador en los ítems de la lista de la actividad principal.
+
+![lista_one_to_many](img/room-relaciones-uno-a-muchos-prototipo.png)
+
+Ya que es una relación uno a muchos, veamos la solución aplicando lo aprendido previamente.
+
+Puedes descargar el código completo desde el siguiente enlace:
+
+<button>[Descargar](http://develou.com/downloads/room-7-2xR_dtQ4IUGqQrComkOjWQ.zip)</button>
+
+### 1. Crear Entidad De Colaboradores
+Crea una nueva clase llamada `Collaborator`. Anótala con `@Entity` y agrega como campos todas las columnas mostradas en el modelo relacional. También asegura la restricción foránea hacia `ShoppingList`.
+
+```java
+@Entity(tableName = "collaborator",
+        foreignKeys = @ForeignKey(
+        entity = ShoppingList.class,
+        parentColumns = "id",
+        childColumns = "shopping_list_id")
+)
+public class Collaborator {
+    @NonNull
+    @PrimaryKey
+    public String id;
+
+    public String name;
+
+    @ColumnInfo(name = "shopping_list_id")
+    public String shoppingListId;
+
+    public Collaborator(@NonNull String id, String name, String shoppingListId) {
+        this.id = id;
+        this.name = name;
+        this.shoppingListId = shoppingListId;
+    }
+}
+```
+
+Luego añade la entidad a la lista de `@Database` y aumenta la versión a `5`.
+
+```java
+@Database(entities = {ShoppingList.class, Info.class, Collaborator.class},
+        version = 5, exportSchema = false)
+public abstract class ShoppingListDatabase extends RoomDatabase {
+}
+```
+
+### 2. Relacionar ShoppingList Y Collaborator
+Crea otra clase para la relación de la lista de compras y colaboradores llamada `ShoppingListWithCollaborators`.
+
+Ya que deseas solo el nombre del colaborador en el resultado, aplica una proyección desplegable con la columna `collaborator.name`.
+
+Y no olvides incluir la relación `1:1` con `Info` que creaste en el tutorial anterior.
+
+```java
+public class ShoppingListWithCollaborators {
+    @Embedded
+    public ShoppingListForList shoppingList;
+
+    @Relation(
+            entity = Collaborator.class,
+            parentColumn = "id",
+            entityColumn = "shopping_list_id",
+            projection = {"name"}
+    )
+
+    public List<String> collaboratorNames;
+    @Relation(
+            entity = Info.class,
+            parentColumn = "id",
+            entityColumn = "shopping_list_id",
+            projection = {"created_date"}
+    )
+    public String createdDate;
+}
+```
+
+### 3. Obtener Resultados (1:*) En El DAO
+Ahora ve a `ShoppingListDao` y actualiza los métodos `getAll()` y `getShoppinhListsByCategories()` para que retornen la entidad de relaciones que creaste.
+
+```java
+@Transaction
+@Query("SELECT id, name, is_favorite FROM shopping_list")
+abstract LiveData<List<ShoppingListWithCollaborators>> getAll();
+
+@Transaction
+@Query("SELECT id, name, is_favorite FROM shopping_list WHERE category IN(:categories)")
+abstract LiveData<List<ShoppingListWithCollaborators>> getShoppingListsByCategories(List<String> categories);
+```
+
+Cuando termines estas acciones deberás actualizar el `Adaptador`, `ViewModel` y `Repositorio` para que acepten el nuevo tipo en sus métodos.
+
+### 4. Actualizar Layout Del Item
+Para que el **layout** quede igual al prototipo es necesario que agregues dos `TextViews` a `shopping_list_item.xml`.
+
+![lista_colaboradores](img/liasta-de-compras-con-colaboradores-ui.png)
+
+Usa la siguiente definición XML:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_marginBottom="8dp"
+    android:layout_marginLeft="8dp"
+    android:layout_marginRight="8dp"
+    android:layout_height="wrap_content">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="144dp"
+        android:padding="@dimen/normal_padding">
+
+        <TextView
+            android:id="@+id/name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/favorite_button"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            tools:text="Lista de ejemplo" />
+
+        <TextView
+            android:id="@+id/created_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?textAppearanceCaption"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/name"
+            app:layout_constraintVertical_bias="0.0"
+            tools:text="26/05/2020 01:12:54" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/favorite_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:layout_marginRight="8dp"
+            android:button="@drawable/sl_favorite_24"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:buttonTint="@color/favorite_color"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/delete_button"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0" />
+
+        <ImageView
+            android:id="@+id/delete_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            app:srcCompat="@drawable/ic_delete_24" />
+
+        <TextView
+            android:id="@+id/collaborators_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/collaborators_label"
+            android:textAllCaps="true"
+            android:textAppearance="?textAppearanceCaption"
+            app:layout_constraintBottom_toTopOf="@+id/collaborator_names"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/created_date"
+            app:layout_constraintVertical_bias="1.0" />
+
+        <TextView
+            android:id="@+id/collaborator_names"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?textAppearanceBody1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:text="Cesar, Ramiro, Cristina" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>
+```
+
+### 5. Bindear Colaboradores En Adaptador
+Ahora muestra los nombres de los colaboradores en un `String` separado por comas en el `ViewHolder` del adaptador.
+
+```java
+public class ShoppingListViewHolder extends RecyclerView.ViewHolder {
+    private final TextView mNameText;
+    private final CheckBox mFavoriteButton;
+    private final ImageView mDeleteButton;
+    private TextView mCreatedDateText;
+    private TextView mCollaboratorsText;
+
+    public ShoppingListViewHolder(@NonNull View itemView) {
+        super(itemView);
+        mNameText = itemView.findViewById(R.id.name);
+        mCreatedDateText = itemView.findViewById(R.id.created_date);
+        mFavoriteButton = itemView.findViewById(R.id.favorite_button);
+        mDeleteButton = itemView.findViewById(R.id.delete_button);
+        mCollaboratorsText = itemView.findViewById(R.id.collaborator_names);
+
+        // Setear eventos
+        mFavoriteButton.setOnClickListener(this::manageEvents);
+        mDeleteButton.setOnClickListener(this::manageEvents);
+        itemView.setOnClickListener(this::manageEvents);
+    }
+
+    private void manageEvents(View view) {
+        if (mItemListener != null) {
+            ShoppingListWithCollaborators clickedItem = mShoppingLists.get(getAdapterPosition());
+
+            // Manejar evento de click en Favorito
+            if (view.getId() == R.id.favorite_button) {
+                mItemListener.onFavoriteIconClicked(clickedItem);
+                return;
+            } else if (view.getId() == R.id.delete_button) {
+                mItemListener.onDeleteIconClicked(clickedItem);
+                return;
+            }
+
+            mItemListener.onClick(clickedItem);
+        }
+    }
+
+    public void bind(ShoppingListWithCollaborators item) {
+        mNameText.setText(item.shoppingList.name);
+        mFavoriteButton.setChecked(item.shoppingList.favorite);
+        mCreatedDateText.setText(item.createdDate);
+        mCollaboratorsText.setText(TextUtils.join(",", item.collaboratorNames));
+    }
+}
+```
+
+### 6. Insertar Colaboradores
+Modifica el método del DAO de la inserción de listas de compras para que acepte una lista colaboradores.
+
+```java
+@Transaction
+public void insertWithInfoAndCollaborators(ShoppingListInsert shoppingList,
+                                           Info info, List<Collaborator> collaborators) {
+    insertShoppingList(shoppingList);
+    insertInfo(info);
+    insertAllCollaborators(collaborators);
+}
+
+@Transaction
+public void insertAllWithInfosAndCollaborators(List<ShoppingListInsert> shoppingLists,
+                                               List<Info> infos,
+                                               List<Collaborator> collaborators) {
+    insertAll(shoppingLists);
+    insertAllInfos(infos);
+    insertAllCollaborators(collaborators);
+}
+
+@Insert(onConflict = OnConflictStrategy.IGNORE)
+protected abstract void insertAllCollaborators(List<Collaborator> collaborators);
+```
+
+Seguido, abre `ShoppingListDatabase` e inserta cinco colaboradores en la escucha de apertura de la base de datos.
+
+```java
+// Prepoblar base de datos con callback
+private static final RoomDatabase.Callback mRoomCallback = new Callback() {
+    @Override
+    public void onOpen(@NonNull SupportSQLiteDatabase db) {
+        super.onCreate(db);
+
+        dbExecutor.execute(this::prepopulate);
+    }
+
+    public void prepopulate() {
+        ShoppingListDao dao = INSTANCE.shoppingListDao();
+
+        List<ShoppingListInsert> lists = new ArrayList<>();
+        List<Info> infos = new ArrayList<>();
+        List<Collaborator> collaborators = new ArrayList<>();
+
+        for (int i = 0; i < 5; i++) {
+
+            String dummyId = String.valueOf((i + 1));
+
+            // Crear lista de compras
+            ShoppingListInsert shoppingList = new ShoppingListInsert(
+                    dummyId,
+                    "Lista " + (i + 1)
+            );
+
+            // Crear info
+            String date = Utils.getCurrentDate();
+            Info info = new Info(
+                    shoppingList.id, date, date);
+
+            // Crear colaborador
+            Collaborator collaborator = new Collaborator(dummyId,
+                    "Colaborador " + dummyId, dummyId);
+
+            lists.add(shoppingList);
+            infos.add(info);
+            collaborators.add(collaborator);
+        }
+
+        dao.insertAllWithInfosAndCollaborators(lists, infos, collaborators);
+    }
+};
+```
+
+Ya finalizando, ejecuta el aplicativo. Deberás ver la siguiente imagen:
+
+<img alt="one_to_many_room" src="img/relaciones-uno-a-muchos-con-room-616x1300.png" width="300"/>
+
+## Relaciones Muchos A Muchos Con Room
+En este tutorial aprenderás a implementar [relaciones muchos a muchos](https://developer.android.com/training/data-storage/room/relationships#many-to-many) con Room a través de la anotación `@Relation`.
+
+Recuerda leer el [tutorial relaciones uno a muchos](https://www.develou.com/relaciones-uno-a-muchos-con-room/) para seguir un trayecto secuencial de esta guía de Room.
+
+### Implementar Relaciones Muchos A Muchos
+Este tipo de relaciones se dan cuando múltiples instancias de una entidad están asociados con múltiples instancias de otra entidad.
+
+Si deseas simplificar la consulta de estas relaciones sin usar queries complejas, entonces puedes implementarla de la siguiente forma:
+
+**Paso 1**: Crear una entidad asociativa (referencia cruzada) que contenga las claves primarias de las tablas de la relación.
+
+```java
+@Entity(primaryKeys = {"aId", "bId"})
+    public class ABCrossRef {
+    public int aId;
+    public int bId;
+}
+```
+
+Esta tabla te resulta de la conversión relacional en una relación muchos a muchos, por lo que le debes dar persistencia en tu base de datos SQLite.
+
+**Paso 2**: Crea una clase de resultado dependiendo de la dirección de consulta. Es decir, si quieres obtener todas las filas _B_ asociadas a una entidad _A_, o si quieres obtener todas las filas _A_ asociadas a una entidad _B_.
+
+```java
+public class AWithBs {
+    @Embedded
+    public A a;
+
+    @Relation(
+            parentColumn = "aId",
+            entityColumn = "bId",
+            associateBy = @Junction(ABCrossRef.class)
+    )
+    public List<B> bs;
+}
+
+public class BWithAs {
+    @Embedded
+    public B b;
+
+    @Relation(
+            parentColumn = "bId",
+            entityColumn = "aId",
+            associateBy = @Junction(ABCrossRef.class)
+    )
+    public List<A> as;
+}
+```
+
+Usa la propiedad `associateBy` para identificar la entidad de asociación con la anotación `@Junction`.
+
+**Paso 3**: Agrega un método de consulta al DAO y dependiendo de la dirección de la misma, usa la entidad de relación apropiada como tipo de retorno.
+
+```java
+@Transaction
+@Query("SELECT * FROM a")
+public List<A> getAWithBs();
+
+@Transaction
+@Query("SELECT * FROM b")
+public List<B> getBWithAs();
+```
+
+### Ejemplo De Relaciones Muchos A Muchos Con Room
+Usaremos la relación entre las tablas `shopping_list` e items en nuestro [**ejemplo de App de listas de compras**](https://www.develou.com/ejemplo-de-room), para ilustrar la implementación de una relación muchos a muchos.
+
+![many_to_many](img/modelo-relacional-muchos-a-muchos-room.png)
+
+Luego mostraremos los ítems de una lista de compras en un `RecyclerView`, ubicado en la actividad la pantalla de edición.
+
+![proto](img/prototipo-muchos-a-muchos-room.png)
+
+Descarga el código completo para tenerlo como referencia desde el siguiente enlace:
+
+<button>[Descargar](http://develou.com/downloads/room-8-XzShWJLgKUyF9vQv_xp2qw.zip)</button>
+
+### 1. Crear Tabla Para Ítems
+Crea una nueva clase anotada con `@Entity` cuyo nombre refleje el diagrama de base de datos anterior (`item`).
+
+```java
+@Entity
+public class Item {
+    @NonNull
+    @PrimaryKey
+    @ColumnInfo(name = "item_id")
+    public String id;
+
+    @NonNull
+    public String name;
+
+    public Item(@NonNull String id, @NonNull String name) {
+        this.id = id;
+        this.name = name;
+    }
+}
+```
+
+### 2. Crear Tabla Asociativa
+Crea otra clase para representar la tabla asociativa `shopping_list_item`. Como viste en el diagrama, agrega las claves primarias de las tablas involucradas y márcalas como clave primaria compuesta.
+
+```java
+@Entity(tableName = "shopping_list_item",
+        primaryKeys = {"shopping_list_id", "item_id"},
+        foreignKeys = {
+                @ForeignKey(
+                        entity = ShoppingList.class,
+                        parentColumns = "shopping_list_id",
+                        childColumns = "shopping_list_id",
+                        onDelete = ForeignKey.CASCADE),
+                @ForeignKey(
+                        entity = Item.class,
+                        parentColumns = "item_id",
+                        childColumns = "item_id")
+        }
+)
+public class ShoppingListItem {
+    @NonNull
+    @ColumnInfo(name = "shopping_list_id")
+    public String shoppingListId;
+
+    @NonNull
+    @ColumnInfo(name = "item_id")
+    public String itemId;
+
+    public ShoppingListItem(@NonNull String shoppingListId, @NonNull String itemId) {
+        this.shoppingListId = shoppingListId;
+        this.itemId = itemId;
+    }
+}
+```
+Luego actualiza la base de datos a la versión `6` y agrega ambas entidades.
+
+```java
+@Database(entities = {
+        ShoppingList.class,
+        Info.class,
+        Collaborator.class,
+        Item.class,
+        ShoppingListItem.class},
+        version = 6, exportSchema = false)
+public abstract class ShoppingListDatabase extends RoomDatabase {
+}
+```
+
+### 3. Crear Clase De Resultado
+Añade la clase para mapear los resultados obtenidos de la relación.
+
+Recuerda que consultaremos los ítems de las listas de compras, por lo que el campo `@Embedded` es la lista de compra y el `@Relation` es la lista de items.
+
+```java
+public class ShoppingListWithItems {
+    @Embedded
+    public ShoppingList shoppingList;
+
+    @Relation(
+            parentColumn = "shopping_list_id",
+            entityColumn = "item_id",
+            associateBy = @Junction(ShoppingListItem.class)
+    )
+    public List<Item> items;
+}
+```
+
+### 4. Obtener Items De Lista De Compra
+Ahora modifica `ShoppingListDao` para que el método que consultaba el detalle de una lista de compras retorne en `ShoppingListWithItems`.
+
+```java
+@Transaction
+@Query("SELECT * FROM shopping_list WHERE shopping_list_id = :id")
+public abstract LiveData<ShoppingListWithItems> shoppingListWithItems(String id);
+```
+
+Propaga este cambio a los retornos de los métodos del `ViewModel` y el `repositorio`.
+
+### 5. Modificar Layout De Edición De Listas De Compras
+Como observaste en el prototipo propuesto, debes agregar un `RecyclerView` para mostrar los ítems de la lista de compras.
+
+Así que abre `activity_edit_shopping_list.xml` y pega el siguiente código:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".editshoppinglist.EditShoppingListActivity">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:layout_width="0dp"
+        android:id="@+id/items_list"
+        android:layout_height="0dp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        tools:listitem="@layout/list_item"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+Seguido, crea un layout para el ítem llamado `list_item.xml` para mostrar el nombre de cada ítem.
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="?listPreferredItemHeight"
+    android:padding="@dimen/normal_padding">
+
+    <TextView
+        android:id="@+id/item_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?textAppearanceBody1"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Espinaca" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+### 6. Crear Adaptador De Items
+Infla la lista de items creando un adaptador que enlace la entidad `Item` con el `TextView` del **layout** para items de lista.
+
+Usa el siguiente código:
+
+```java
+public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ItemViewHolder> {
+
+    private List<Item> mItems;
+
+    @NonNull
+    @Override
+    public ItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        return new ItemViewHolder(LayoutInflater.from(
+                parent.getContext()).inflate(
+                R.layout.list_item,
+                parent,
+                false)
+        );
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ItemViewHolder holder, int position) {
+        Item item = mItems.get(position);
+        holder.bind(item);
+    }
+
+    @Override
+    public int getItemCount() {
+        return mItems == null ? 0 : mItems.size();
+    }
+
+    public void setItems(List<Item> items) {
+        mItems = items;
+        notifyDataSetChanged();
+    }
+
+    public static class ItemViewHolder extends RecyclerView.ViewHolder {
+        public TextView mNameText;
+
+        public ItemViewHolder(@NonNull View itemView) {
+            super(itemView);
+            mNameText = itemView.findViewById(R.id.item_name);
+        }
+
+        public void bind(Item item) {
+            mNameText.setText(item.name);
+        }
+    }
+}
+```
+
+### 7. Cargar Elementos Con El ViewModel
+Desde `EditShoppingListActivity` toma la referencia del `RecyclerView` y vincúlalo a una instancia del adaptador.
+
+```java
+private void setupItemsList() {
+    mItemsList = findViewById(R.id.items_list);
+    mAdapter = new ItemAdapter();
+    mItemsList.setAdapter(mAdapter);
+}
+```
+
+Ahora en la suscripción que hicimos al `LiveData` con la lista de compras, usa el método `setItems()` del adaptador para actualizar la lista en cada notificación de cambio.
+
+```java
+private void subscribeToUi() {
+    mViewModel.getShoppingList().observe(this,
+        shoppingList -> {
+            mActionBar.setTitle(shoppingList.shoppingList.name);
+            mAdapter.setItems(shoppingList.items);
+        }
+    );
+}
+```
+8. Crear DAOs
+Añade dos nuevos DAOs abstractos para los ítems (`ItemDao`) y la tabla de referencia (`ShoppingListItemDao`). Escríbeles un método para insertar una lista de elementos.
+
+```java
+@Dao
+public abstract class ItemDao {
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    public abstract void insertAll(List<Item> items);
+}
+
+@Dao
+public abstract class ShoppingListItemDao {
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    public abstract void insertAll(List<ShoppingListItem> shoppingListItems);
+}
+```
+
+Ahora exponlos desde `ShoppingListDatabase` con un método get.
+
+```java
+public abstract ItemDao itemDao();
+public abstract ShoppingListItemDao shoppingListItemDao();
+```
+
+### 9. Llamar A Múltiples DAOs En Una Trasacción
+Y para terminar. Ya que vas a insertar datos desde múltiples DAOs desde la prepoblación, es necesario que crees una transacción para conservar la atomicidad.
+
+Ve a base de datos e inserta cinco items por cada lista de compras en la prepoblación y luego llama al método `RoomDatabase.runInTransaction()`.
+
+```java
+private static void prepopulate(Context context) {
+    // Obtener instancias de Daos
+    ShoppingListDao shoppingListDao = INSTANCE.shoppingListDao();
+    ItemDao itemDao = INSTANCE.itemDao();
+    ShoppingListItemDao shoppingListItemDao = INSTANCE.shoppingListItemDao();
+
+    List<ShoppingListInsert> lists = new ArrayList<>();
+    List<Info> infos = new ArrayList<>();
+    List<Collaborator> collaborators = new ArrayList<>();
+    List<Item> items = new ArrayList<>();
+    List<ShoppingListItem> shoppingListItems = new ArrayList<>();
+
+    for (int i = 0; i < 5; i++) {
+
+        String dummyId = String.valueOf((i + 1));
+
+        // Crear lista de compras
+        ShoppingListInsert shoppingList = new ShoppingListInsert(
+                dummyId,
+                "Lista " + (i + 1)
+        );
+
+        // Crear info
+        String date = Utils.getCurrentDate();
+        Info info = new Info(
+                shoppingList.id, date, date);
+
+        // Crear colaborador
+        Collaborator collaborator = new Collaborator(dummyId,
+                "Colaborador " + dummyId, dummyId);
+
+        // Crear ítems de la lista
+        for (int j = 0; j < 5; j++) {
+            Item item = new Item(dummyId + (j + 1), "Item #" + (j + 1));
+
+            // Crear filas de "lista <contiene> item"
+            ShoppingListItem shoppingListItem = new ShoppingListItem(shoppingList.id, item.id);
+
+            items.add(item);
+            shoppingListItems.add(shoppingListItem);
+        }
+
+        lists.add(shoppingList);
+        infos.add(info);
+        collaborators.add(collaborator);
+
+    }
 
 
+    // Crear transacción para llamar DAOs
+    getInstance(context).runInTransaction(() -> {
+        shoppingListDao.insertAllWithInfosAndCollaborators(lists, infos, collaborators);
+        itemDao.insertAll(items);
+        shoppingListItemDao.insertAll(shoppingListItems);
+    });
+}
+```
 
+Por otro lado, como también insertas una lista de compras desde la actividad `AddShoppingListActivity`, es necesario que modifiques el método de guardado del repositorio.
+
+Entra a `ShoppingListRepository` y llama al método `runInTransaction()` de la base de datos para insertar todos los registros desde los DAOs relacionados en `insert()`.
+
+```java
+public void insert(ShoppingListInsert shoppingList, Info info,
+                   List<Collaborator> collaborators, List<Item> items) {
+    ShoppingListDatabase.dbExecutor.execute(
+            () -> mDb.runInTransaction(
+                    () -> processInsert(shoppingList, info, collaborators, items)
+            )
+    );
+}
+
+private void processInsert(ShoppingListInsert shoppingList, Info info,
+                           List<Collaborator> collaborators, List<Item> items) {
+    // Insertar lista de compras
+    mShoppingListDao.insertWithInfoAndCollaborators(shoppingList, info, collaborators);
+
+    // Insertar items
+    mItemDao.insertAll(items);
+
+    // Generar registros de relación
+    List<ShoppingListItem> shoppingListItems = new ArrayList<>();
+    for (Item item : items) {
+        shoppingListItems.add(new ShoppingListItem(shoppingList.id, item.id));
+    }
+
+    // Insertar registros de relación
+    mShoppingListItemDao.insertAll(shoppingListItems);
+}
+```
+
+Finalmente, ejecuta el aplicativo y revisa que se carguen los ítems de las listas de compras en la actividad de edición.
+
+<img alt="resultado_many_to_many" src="img/relaciones-muchos-a-muchos-con-room-616x1300.png" width="300"/>
+
+## Crear Vistas En Room
+En este tutorial aprenderás a cómo usar la anotación `@DatabaseView` para [**crear vistas en Room**](https://developer.android.com/training/data-storage/room/creating-views) con el fin de empaquetar consultas complejas.
+
+Recuerda leer el [**tutorial de relaciones muchos a muchos**](https://www.develou.com/relaciones-muchos-a-muchos-con-room/) para que sigas la secuencia de esta guía de Room.
+
+### Vistas En SQLite
+Las vistas son comandos `SELECT` empaquetados bajo un nombre dado, que proveen acceso directo a un conjunto de datos de interés.
+
+Las usamos para:
+
+* Obtener información con estructura amigable
+* Ocultar los detalles del esquema de la base de datos
+* Resumir reportes de consultas que impliquen la cláusula `JOIN`
+
+La librería Room te permite asociar clases de resultados a la creación de una vista para que puedas consultarlas a través de DAOs.
+
+Para crear una vista, añade una nueva clase que represente el resultado y anótala con `@DatabaseView`. Usa el parámetro `value` para establecer comando `SELECT` asociado y `viewName` si deseas establecer un nombre particular para la vista
+
+```java
+@DatabaseView(
+        value=
+        "SELECT columna1, columna2, ... " +
+        "FROM nombre_tabla " +
+        "WHERE [condicion]", viewName="example_view")
+public class ViewExample {
+public tipo column1;
+public tipo column2;
+...
+}
+```
+
+Luego inclúyela en tu base de datos con la propiedad `views` de la anotación `@Entity`.
+
+```java
+@Database(entities = {Example.class}, views = {ViewExample.class},
+          version = 1)
+public abstract class ExampleDatabase extends RoomDatabase {
+    public abstract ExampleDao exampleDao();
+}
+```
+
+En el momento en que declares la sentencia `SELECT` haz que coincidan los nombres de los campos de la clase con los nombres de la consulta.
+
+Usa la anotación `@ColumnInfo` si deseas nombrar el atributo con otra convención.
+
+### Ejemplo De Vistas En Room
+Tomemos la actividad con la listas de compras de nuestro [**App de ejemplo**](https://www.develou.com/ejemplo-de-room/) para añadir una vista a la base de datos.
+
+![proto](img/prototipo-crear-vistas-room.png)
+
+Con esta vista mostraremos todas las columnas de la lista de compras que ya obteníamos junto a la cantidad de ítems que contiene.
+
+El siguiente es el código de SQLite puro de la vista.
+
+```sqlite
+SELECT l.*, i.created_date, COUNT(*) AS itemscount
+FROM shopping_list l
+    INNER JOIN info i USING ( shopping_list_id )
+    INNER JOIN shopping_list_item USING ( shopping_list_id )
+    INNER JOIN item USING ( item_id )
+GROUP BY
+    l.shopping_list_id
+```
+
+Recuerda que `USING` equivale a `ON tabla1.id_tabla1 = tabla2.id_tabla1` si ambas columnas de comparación se llaman igual.
+
+Puedes descargar el proyecto Android Studio desde el siguiente enlace:
+
+<button>[Descargar](http://develou.com/downloads/room-9-X1-X5rELnUC_dBVt5hvAsg.zip)</button>
+
+### 1. Crear Vista En La Base De Datos
+Crea una nueva clase llamada `ShoppingListView` la cual use como sentencia de selección la consulta de todas las listas de compras y el conteo de sus ítems.
+
+```java
+@DatabaseView(
+    value = "SELECT l.*, i.created_date, COUNT(*) as itemsCount " +
+            "FROM shopping_list l " +
+            "INNER JOIN info i " +
+            "USING(shopping_list_id) " +
+            "INNER JOIN shopping_list_item " +
+            "USING(shopping_list_id) " +
+            "INNER JOIN item " +
+            "USING(item_id)" +
+            "GROUP BY l.shopping_list_id",
+    viewName = "v_full_shopping_lists"
+)
+public class ShoppingListView {
+    @ColumnInfo(name = "shopping_list_id")
+    public String id;
+
+    public String name;
+
+    public String category;
+
+    @ColumnInfo(name = "is_favorite")
+    public boolean favorite;
+
+    @ColumnInfo(name = "created_date")
+    public String createdDate;
+
+    public int itemsCount;
+}
+```
+
+Inmediatamente, regístrala en `ShoppingListDatabase` y sube la versión a `7`.
+
+```java
+@Database(entities = {
+        ShoppingList.class,
+        Info.class,
+        Collaborator.class,
+        Item.class,
+        ShoppingListItem.class},
+        views = ShoppingListView.class,
+        version = 7, exportSchema = false)
+public abstract class ShoppingListDatabase extends RoomDatabase {
+}
+```
+
+### 2. Consultar Vista Con DAO
+Al interior de `ShoppingListDao` modifica a los dos métodos que retornan las listas de compras para el adaptador (consulta general y filtro categorías).
+
+La idea es que sus anotaciones `@Query` consulten a la vista que creaste.
+
+```java
+@Transaction
+@Query("SELECT * FROM v_full_shopping_lists")
+public abstract LiveData<List<ShoppingListWithCollaborators>> shoppingLists();
+
+@Transaction
+@Query("SELECT * FROM v_full_shopping_lists WHERE category IN(:categories)")
+public abstract LiveData<List<ShoppingListWithCollaborators>> getShoppingListsByCategories(List<String> categories);
+```
+
+### 3. Actualizar Clase De Resultados
+Ya que cambiarás la proyección de la consulta de listas de compras, es necesario que modifiques la clase `ShoppingListWithCollaborators`. Usa la vista como entidad padre y tan solo deja a la tabla de colaboradores.
+
+```java
+public class ShoppingListWithCollaborators {
+    @Embedded
+    public ShoppingListView shoppingList;
+
+    @Relation(
+            entity = Collaborator.class,
+            parentColumn = "shopping_list_id",
+            entityColumn = "shopping_list_id",
+            projection = {"name"}
+    )
+    public List<String> collaboratorNames;
+}
+```
+
+Con esto obtendrás toda la información necesaria en el diseño de `MainActivity`.
+
+### 4. Modificar Layout De Listas De Compras
+El cambio es mínimo. Agrega un TextView que represente la cantidad de ítems en el extremo inferior derecho.
+
+![cantidad_items](img/lista-de-compras-con-cantidad-de-items.png)
+
+Usa la siguiente definición XML:
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_marginBottom="8dp"
+    android:layout_marginLeft="8dp"
+    android:layout_marginRight="8dp"
+    android:layout_height="wrap_content">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="144dp"
+        android:padding="@dimen/normal_padding">
+
+        <TextView
+            android:id="@+id/name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/favorite_button"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            tools:text="Lista de ejemplo" />
+
+        <TextView
+            android:id="@+id/created_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?textAppearanceCaption"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/name"
+            app:layout_constraintVertical_bias="0.0"
+            tools:text="26/05/2020 01:12:54" />
+
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/favorite_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:layout_marginRight="8dp"
+            android:button="@drawable/sl_favorite_24"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:buttonTint="@color/favorite_color"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/delete_button"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0" />
+
+        <ImageView
+            android:id="@+id/delete_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            app:srcCompat="@drawable/ic_delete_24" />
+
+        <TextView
+            android:id="@+id/collaborators_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/collaborators_label"
+            android:textAllCaps="true"
+            android:textAppearance="?textAppearanceCaption"
+            app:layout_constraintBottom_toTopOf="@+id/collaborator_names"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/created_date"
+            app:layout_constraintVertical_bias="1.0" />
+
+        <TextView
+            android:id="@+id/collaborator_names"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?textAppearanceBody1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:text="Cesar, Ramiro, Cristina" />
+
+        <TextView
+            android:id="@+id/items_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="1.0"
+            android:textAppearance="?textAppearanceHeadline4"
+            tools:text="5" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>
+```
+
+Y en consecuencia, abre el adaptador y bindea el nuevo valor.
+
+```java
+public class ShoppingListViewHolder extends RecyclerView.ViewHolder {
+    private final TextView mNameText;
+    private final CheckBox mFavoriteButton;
+    private final ImageView mDeleteButton;
+    private final TextView mCreatedDateText;
+    private final TextView mCollaboratorsText;
+    private final TextView mItemsCount;
+
+    public ShoppingListViewHolder(@NonNull View itemView) {
+        super(itemView);
+        mNameText = itemView.findViewById(R.id.name);
+        mCreatedDateText = itemView.findViewById(R.id.created_date);
+        mFavoriteButton = itemView.findViewById(R.id.favorite_button);
+        mDeleteButton = itemView.findViewById(R.id.delete_button);
+        mCollaboratorsText = itemView.findViewById(R.id.collaborator_names);
+        mItemsCount = itemView.findViewById(R.id.items_count);
+
+        // Setear eventos
+        mFavoriteButton.setOnClickListener(this::manageEvents);
+        mDeleteButton.setOnClickListener(this::manageEvents);
+        itemView.setOnClickListener(this::manageEvents);
+    }
+
+    private void manageEvents(View view) {
+        if (mItemListener != null) {
+            ShoppingListWithCollaborators clickedItem = mShoppingLists.get(getAdapterPosition());
+
+            // Manejar evento de click en Favorito
+            if (view.getId() == R.id.favorite_button) {
+                mItemListener.onFavoriteIconClicked(clickedItem);
+                return;
+            } else if (view.getId() == R.id.delete_button) {
+                mItemListener.onDeleteIconClicked(clickedItem);
+                return;
+            }
+
+            mItemListener.onClick(clickedItem);
+        }
+    }
+
+    public void bind(ShoppingListWithCollaborators item) {
+        mNameText.setText(item.shoppingList.name);
+        mFavoriteButton.setChecked(item.shoppingList.favorite);
+        mCreatedDateText.setText(item.shoppingList.createdDate);
+        mCollaboratorsText.setText(TextUtils.join(",", item.collaboratorNames));
+        mItemsCount.setText(String.valueOf(item.shoppingList.itemsCount));
+    }
+}
+```
+
+Con esos cambios ya puedes ejecutar el proyecto y ver la consulta de la view creada en la base de datos.
+
+<img alt="vistas_room_final" src="img/crear-vistas-con-room-616x1300.png" width="300"/>
+
+## El Database Inspector En Android Studio
+En este tutorial aprenderás a usar el Database Inspector de Android Studio para depurar tus bases de datos SQLite creadas con Room.
+
+### Database Inspector
+Esta [**herramienta**](https://developer.android.com/studio/inspect/database), disponible desde Android Studio 4.1, te permite observar y manipular los esquemas SQLite de tus Apps en tiempo real.
+
+![data_base_inspector](img/database-inspector-room-1.png)
+
+Para abrirlo sigue estos pasos:
+
+1. Corre tu app en un emulador/dispositivo que ejecute una versión igual o mayor al SDK 26
+2. Ve a **View > Tool Window > Database Inspector**
+3. Selecciona el proceso asociado a tu app, normalmente distinguido por el nombre del paquete
+4. Ubícate en la jerarquía con el nombre de tu base de datos
+
+Tomemos como referencia nuestra [**App de listas de compras**](https://www.develou.com/ejemplo-de-room/) como ejemplo. Al iniciar el Database Inspector, tendríamos que seleccionar el esquema `shopping_list_database`.
+
+![shopping-list-database-esquema](img/shopping-list-database-esquema.png)
+
+En este panel de bases de datos encontraremos las cinco tablas que creamos y una [**vista**](https://www.develou.com/crear-vistas-en-room/).
+
+### Inspeccionar Tablas
+Puedes ver los registros de la tabla que desees haciendo doble click sobre ella.
+
+![panel-de-datos-database-inspector](img/panel-de-datos-database-inspector.png)
+
+Esta vista te permitirá:
+
+1. Organizar las tablas por pestañas
+2. Refrescar la tabla para comprobar cambios
+3. Ver cambios de la base de datos en vivo
+4. Ordenar los datos por columna
+5. Cambiar el número de filas por página
+6. Cambiar el valor de las celdas
+
+**Por ejemplo**:
+
+Si cambias el nombre de una lista de compras, podrás ver como el observador notifica el cambio en el `RecyclerView`.
+
+![modificar-datos-database-inspector](img/modificar-datos-database-inspector.gif)
+
+### Cambios Con LiveData
+Si marcas la opción **Live updates** del panel de datos, los cambios que realices desde la interfaz, se verán reflejados en la tabla.
+
+**Por ejemplo**:
+
+Marca `Live updates` y prueba eliminar una lista de compras.
+
+![livedata-database-inspector](img/livedata-database-inspector.gif)
+
+### Consultar Datos
+El Database Inspector también te permite usar sentencias SQL sobre tu esquema de base de datos en tiempo real.
+
+#### Consultas De DAOs
+Una de las formas de hacerlo es a través de la acción emergente **Run Sqlite statement in Database Inspector**.
+
+Esta se habilita directamente desde las anotaciones `@Query` o `@DatabaseView` cuando tu App está corriendo.
+
+**Ejemplo**:
+
+Ejecuta la sentencia del método `ShoppingListDao.shoppingLists()`.
+
+![consultar-datos-dao-database-inspector](img/consultar-datos-dao-database-inspector.gif)
+
+Si la sentencia tiene parámetros bindeables, se te pedirán los valores en un diálogo.
+
+**Ejemplo**: Consulta una lista de compras por Id.
+
+![consultar-con-parametro-database-inspector](img/consultar-con-parametro-database-inspector.gif)
+
+#### Consultas Personalizadas
+Por último, si deseas escribir consultas particulares presiona el botón **Open New Query Tab**, selecciona tu esquema y construye el código SQLite.
+
+![consultas-personalizadas-database-inspector](img/consultas-personalizadas-database-inspector.gif)
+
+También es puedes usar comandos como `INSERT`, `UPDATE`, `DELETE`, `CREATE TABLE`, etc. Y si usas Room con `LiveData` o `Flow`, como en el ejemplo que tenemos, todos los cambios se reflejaran en la interfaz.
+
+## Ejemplo De Room: App Listas De Compras
+En este artículo verás el ejemplo de Room que tomamos como referencia en la [**guía**](https://www.develou.com/room/). Una aplicación Android sencilla que maneja listas de compras y sus ítems.
+
+Te explicaremos las características, el modelo relacional de la base de datos y la estructura de paquetes en Android Studio. Y luego, te proveeremos el link para que descargues el proyecto.
+
+### Características
+La App de lista de compras consiste de tres actividades:
+
+* Actividad para listas de compras
+* Actividad para creación de listas de compras
+* Actividad para edición de listas de compras.
+
+![aplicacion-android-de-listas-de-compras](img/aplicacion-android-de-listas-de-compras.png)
+
+De ellas se derivan las siguientes funcionalidades.
+
+### Listas De Compras
+Esta es la población de una lista con todas las listas de compras existentes en la base de datos. Puedes filtrar por categorías.
+
+![filtrar-listas-de-compras](img/filtrar-listas-de-compras.gif)
+
+### Crear Listas De Compras
+Al presionar el `FAB` se inicia una actividad que te permite escribir el nombre de la lista de compras. Por practicidad, los items, la información adicional y los colaboradores de la lista se generan automáticamente en esta instancia.
+
+![img/crear-nueva-lista-de-compras](img/crear-nueva-lista-de-compras.gif)
+
+### Marcar Listas Como Favoritas
+Las listas pueden marcarse como favoritas si haces click en el botón con icono de estrella.
+
+![marcar-lista-de-compras-como-favorita](img/marcar-lista-de-compras-como-favorita.gif)
+
+### Editar Listas De Compras
+Se inicia la actividad de edición de listas de compras al hacer click. Por simplicidad, se añaden ítems prefabricados en la edición.
+
+![editar-lista-de-compras](img/editar-lista-de-compras.gif)
+
+### Eliminar Una Lista De Compras
+Al presionar el botón con icono de caneca las listas son eliminadas individualmente.
+
+![](img/eliminar-lista-de-compras.gif)
+
+También puedes limpiar los elementos desde la Toolbar al presionar el botón **«Eliminar todas»** desde el [**menú de overflow**](https://developer.android.com/training/appbar/actions#add-actions).
+
+![eliminar-todas-las-listas-de-compras](img/eliminar-todas-las-listas-de-compras.gif)
+
+### Base De Datos SQLite
+El ejemplo de Room contiene las siguientes tablas en su base de datos:
+
+* `shopping_list`: almacena los datos de las listas de compras
+* `item`: almacea los datos de los items que se agregan a las listas de compras
+* `info`: representa información adicional de las listas de compras
+* `collaborator`: guarda los datos de las personas que colaboran en la edición de una lista
+* `shopping_list_item`: tabla de referencia cruzada entre `shopping_list` e `item`.
+
+El siguiente diagrama ilustra las columnas de cada tabla y sus relaciones:
+
+![diagrama-base-de-datos-app-listas-de-compras](img/diagrama-base-de-datos-app-listas-de-compras.png)
+
+### Estructura De Paquetes
+Hemos creado un paquete por cada característica asociada a una pantalla. Debido a que este ejemplo de Room es simple, usamos un solo módulo (**app**).
+
+![paquetes-java-app-listas-de-compras](img/paquetes-java-app-listas-de-compras.png)
+
+Veamos el propósito de cada uno:
+
+* **addshoppinglist**: contiene los componentes de la actividad de creación de listas
+* **data**: Contiene las clases asociadas a la capa de datos como: DAOs, entidades, POJOs parciales, vistas, etc.
+* **editshoppinglist**: Paquete para la actividad y view model de edición
+* **shoppinglists**: Contiene la actividad y view model de la lista de listas de compras.
+
+### Descargar Ejemplo De Room
+Puedes descargar el proyecto Android Studio de la App de listas de compras desde el siguiente enlace:
+
+<button>[Descargar](https://www.develou.com/downloads/ejemplo-room.zip)</button>
+
+Al descargarlo, descomprímelo, luego abre Android Studio, seleccionar la opción **File > Open** y busca la ubicación de la carpeta `ShoppingList`.
