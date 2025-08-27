@@ -527,6 +527,7 @@ Y para terminar, ejecuta el proyecto. Deberías ver lo siguiente:
 <img src="img/screenshot-app-shopping-list-616x1300.png" width="300" alt="captura_lista">
 
 ## Insertar Datos Con Room
+Duration: 0:10:00
 En este tutorial verás cómo insertar datos con Room desde una actividad de creación de listas de compras.
 
 Recuerda que puedes ver el alcance general de este ejemplo en la [**descripción de la App**](https://www.develou.com/ejemplo-de-room/).
@@ -926,6 +927,7 @@ private static final RoomDatabase.Callback mRoomCallback = new Callback() {
 De esta forma, podremos hacer en una misma transacción un **bulk** de inserciones de listas de compras.
 
 ## Consultar Datos Con Room
+Duration: 0:10:00
 En este tutorial veremos con más detalle como consultar datos con Room y la anotación `@Query`.
 
 > aside positive **Más específicamente**: consultar pasando uno o múltiples parámetros y como consultar solo las columnas que necesitemos.
@@ -1426,6 +1428,7 @@ Si ejecutas el proyecto y, como ejemplo, seleccionas la **«Lista 4»** debería
 <img src="img/edicion-lista-de-compras-616x1300.png" width="300" alt="Edición_lista_compras">
 
 ## Actualizar Datos Con Room
+Duration: 0:10:00
 En este tutorial veremos cómo actualizar datos con Room a través de la anotación `@Update`.
 
 La anotación `@Update` nos permite actualizar tanto un solo registro como múltiples a la vez dentro de una transacción. Además podemos actualizar solo las filas necesarias como en la [inserción parcial](https://www.develou.com/insertar-datos-con-room/) vista anteriormente.
@@ -1691,6 +1694,7 @@ Finalmente, si has seguido todos los pasos anteriores, ejecuta y marca como favo
 <img src="img/listas-de-compras-favoritas-616x1300.png" width="300" alt="lista_favoritas">
 
 ## Eliminar Datos Con Room
+Duration: 0:10:00
 En este tutorial aprenderás a eliminar datos con Room con la anotación `@Delete`.
 
 Al igual que `@Insert` y `@Update`, es posible eliminar uno o varios registros de la base de datos y usar POJOs arbitrarios para especificar columnas particulares.
@@ -1977,6 +1981,7 @@ Y finalmente tendremos ambas características implementadas. Ejecuta y al presio
 <img src="img/click-en-eliminar-todas-616x1300.png" width="300" alt="eliminar-todas"> <img src="img/listas-eliminadas-616x1300.png" width="300" alt="listas-eliminadas">
 
 ## Relaciones uno a uno
+Duration: 0:10:00
 En este tutorial veremos cómo implementar relaciones uno a uno con Room entre nuestras tablas.
 
 Para ello, aprenderemos que son los [**objetos embebidos**](https://developer.android.com/training/data-storage/room/relationships#nested-objects) (`@Embedded`), como establecer las anotaciones `@Relation` para la [**relación `1:1`**](https://developer.android.com/training/data-storage/room/relationships#one-to-one) y establecer **claves foráneas**.
@@ -2381,7 +2386,8 @@ Una vez realizados los cambios, ejecuta el proyecto y verás los registros final
 
 <img src="img/app-listas-de-compras-relacion-one-to-one-616x1300.png" width="300" alt="lista_uno_uno">
 
-## Relaciones Uno A Muchos Con Room
+## Relaciones uno a muchos
+Duration: 0:10:00
 En este tutorial aprenderás a cómo usar la anotación `@Relation` para implementar [**relaciones uno a muchos**](https://developer.android.com/training/data-storage/room/relationships#one-to-many) con Room.
 
 ### Implementar Relación Uno A Muchos
@@ -2792,7 +2798,8 @@ Ya finalizando, ejecuta el aplicativo. Deberás ver la siguiente imagen:
 
 <img alt="one_to_many_room" src="img/relaciones-uno-a-muchos-con-room-616x1300.png" width="300"/>
 
-## Relaciones Muchos A Muchos Con Room
+## Relaciones muchos a muchos
+Duration: 0:10:00
 En este tutorial aprenderás a implementar [relaciones muchos a muchos](https://developer.android.com/training/data-storage/room/relationships#many-to-many) con Room a través de la anotación `@Relation`.
 
 Recuerda leer el [tutorial relaciones uno a muchos](https://www.develou.com/relaciones-uno-a-muchos-con-room/) para seguir un trayecto secuencial de esta guía de Room.
@@ -3223,6 +3230,7 @@ Finalmente, ejecuta el aplicativo y revisa que se carguen los ítems de las list
 <img alt="resultado_many_to_many" src="img/relaciones-muchos-a-muchos-con-room-616x1300.png" width="300"/>
 
 ## Crear Vistas En Room
+Duration: 0:10:00
 En este tutorial aprenderás a cómo usar la anotación `@DatabaseView` para [**crear vistas en Room**](https://developer.android.com/training/data-storage/room/creating-views) con el fin de empaquetar consultas complejas.
 
 Recuerda leer el [**tutorial de relaciones muchos a muchos**](https://www.develou.com/relaciones-muchos-a-muchos-con-room/) para que sigas la secuencia de esta guía de Room.
@@ -3546,6 +3554,7 @@ Con esos cambios ya puedes ejecutar el proyecto y ver la consulta de la view cre
 <img alt="vistas_room_final" src="img/crear-vistas-con-room-616x1300.png" width="300"/>
 
 ## El Database Inspector En Android Studio
+Duration: 0:10:00
 En este tutorial aprenderás a usar el Database Inspector de Android Studio para depurar tus bases de datos SQLite creadas con Room.
 
 ### Database Inspector
@@ -3623,6 +3632,7 @@ Por último, si deseas escribir consultas particulares presiona el botón **Open
 También es puedes usar comandos como `INSERT`, `UPDATE`, `DELETE`, `CREATE TABLE`, etc. Y si usas Room con `LiveData` o `Flow`, como en el ejemplo que tenemos, todos los cambios se reflejaran en la interfaz.
 
 ## Ejemplo De Room: App Listas De Compras
+Duration: 0:05:00
 En este artículo verás el ejemplo de Room que tomamos como referencia en la [**guía**](https://www.develou.com/room/). Una aplicación Android sencilla que maneja listas de compras y sus ítems.
 
 Te explicaremos las características, el modelo relacional de la base de datos y la estructura de paquetes en Android Studio. Y luego, te proveeremos el link para que descargues el proyecto.
