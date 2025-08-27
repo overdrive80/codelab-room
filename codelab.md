@@ -119,7 +119,7 @@ Adicionalmente cubriremos características como:
 - Etc.
 
 <!-- ------------------------ -->
-## Crear Una Base De Datos Room <a name="crear-bd"></a>
+## Crear Una Base De Datos Room
 Duration: 0:10:00
 
 En este tutorial vamos a crear una base de datos Room para una App Android de **[ejemplo sobre listas de compras](https://www.develou.com/ejemplo-de-room/)**.
@@ -528,9 +528,8 @@ Y para terminar, ejecuta el proyecto. Deberías ver lo siguiente:
 
 ## Insertar Datos Con Room
 Duration: 0:10:00
-En este tutorial verás cómo insertar datos con Room desde una actividad de creación de listas de compras.
 
-Recuerda que puedes ver el alcance general de este ejemplo en la [**descripción de la App**](https://www.develou.com/ejemplo-de-room/).
+En este tutorial verás cómo insertar datos con Room desde una actividad de creación de listas de compras. Recuerda que puedes ver el alcance general de este ejemplo en la [**descripción de la App**](https://www.develou.com/ejemplo-de-room/).
 
 Al haber [**creado la base de datos**](https://www.develou.com/base-de-datos-room/) de listas de compra, ahora agregaremos un `RecyclerView` para mejorar la vista de `MainActivity`.
 
@@ -901,7 +900,7 @@ void insertShoppingLists(List<ShoppingList> lists);
 ```
 
 Ahora desde `ShoppingListDatabase` creamos una lista de 5 elementos para reemplazar la prepoblación que hacíamos antes de forma individual:
-        
+
 ```java
 // Prepoblar base de datos con callback
 private static final RoomDatabase.Callback mRoomCallback = new Callback() {
@@ -928,6 +927,7 @@ De esta forma, podremos hacer en una misma transacción un **bulk** de insercion
 
 ## Consultar Datos Con Room
 Duration: 0:10:00
+
 En este tutorial veremos con más detalle como consultar datos con Room y la anotación `@Query`.
 
 > aside positive **Más específicamente**: consultar pasando uno o múltiples parámetros y como consultar solo las columnas que necesitemos.
@@ -1083,7 +1083,7 @@ Comencemos con el filtro:
 
 1. Mueve el `RecyclerView` de `activity_main.xml` a un nuevo layout llamado `main_content.xml`. Android Studio puede hacerlo automáticamente si das clic derecho en el componente y presionas **Refactor > Layout**.
 
-    ![refactorlayout](img/refactor_layout.png)
+   ![refactorlayout](img/refactor_layout.png)
 
 2. Abre el nuevo layout, agrega como nodo raíz un `ConstraintLayout` y sitúa en la parte superior a tres etiquetas [**CheckBox**](https://www.develou.com/checkbox-android/). La solución sería:
 
@@ -1264,13 +1264,13 @@ Recuerda que recibiremos el id de la lista de compras, por lo que es necesario e
 
 #### 2. Añadir Escucha De Ítems Al Adaptador
 Hasta el momento nuestro **adaptador** no reaccionaba a los eventos de clics sobre sus ítems, así que añadiremos una interfaz que se encargue de esta responsabilidad.
-    
+
 Esto implica:
 
- - Añadir una interfaz de escucha al adaptador.
- - Procesar el **clic** sobre cada ítem en el `ViewHolder`.
- - Añadir un método para asignar la escucha.
- - Ubicar como clase interna al `ViewHolder`.
+- Añadir una interfaz de escucha al adaptador.
+- Procesar el **clic** sobre cada ítem en el `ViewHolder`.
+- Añadir un método para asignar la escucha.
+- Ubicar como clase interna al `ViewHolder`.
 
 Al codificar todas las características mencionadas tendrás:
 
@@ -1371,7 +1371,7 @@ public LiveData<ShoppingList> getShoppingList(String id){
 #### 4 Crear ViewModel Para Edición
 Luego, crea la clase `EditShoppingListViewModel` y:
 
- - Hazla extender de `AndroidViewModel`.
+- Hazla extender de `AndroidViewModel`.
 - Añade un `LiveData` para el `ID` de la lista.
 - Añade un `LiveData` para la lista a editar. Relaciónala con el `ID` a través de una transformación `switchMap()`.
 - Agrégale un método para cargar la lista con el repositorio.
@@ -1429,6 +1429,7 @@ Si ejecutas el proyecto y, como ejemplo, seleccionas la **«Lista 4»** debería
 
 ## Actualizar Datos Con Room
 Duration: 0:10:00
+
 En este tutorial veremos cómo actualizar datos con Room a través de la anotación `@Update`.
 
 La anotación `@Update` nos permite actualizar tanto un solo registro como múltiples a la vez dentro de una transacción. Además podemos actualizar solo las filas necesarias como en la [inserción parcial](https://www.develou.com/insertar-datos-con-room/) vista anteriormente.
@@ -1695,6 +1696,7 @@ Finalmente, si has seguido todos los pasos anteriores, ejecuta y marca como favo
 
 ## Eliminar Datos Con Room
 Duration: 0:10:00
+
 En este tutorial aprenderás a eliminar datos con Room con la anotación `@Delete`.
 
 Al igual que `@Insert` y `@Update`, es posible eliminar uno o varios registros de la base de datos y usar POJOs arbitrarios para especificar columnas particulares.
@@ -1982,6 +1984,7 @@ Y finalmente tendremos ambas características implementadas. Ejecuta y al presio
 
 ## Relaciones uno a uno
 Duration: 0:10:00
+
 En este tutorial veremos cómo implementar relaciones uno a uno con Room entre nuestras tablas.
 
 Para ello, aprenderemos que son los [**objetos embebidos**](https://developer.android.com/training/data-storage/room/relationships#nested-objects) (`@Embedded`), como establecer las anotaciones `@Relation` para la [**relación `1:1`**](https://developer.android.com/training/data-storage/room/relationships#one-to-one) y establecer **claves foráneas**.
@@ -2092,6 +2095,7 @@ public abstract class ShoppingListDao {
     abstract LiveData<List<ShoppingListAndInfo>> getShoppingListsByCategories(List<String> categories);
 }
 ```
+
 Como ves, estamos pasando de interfaz a clase abstracta en el DAO, ya que operar relaciones requiere más de un método en la mayoría de casos.
 
 ### Declarar Llaves Foráneas
@@ -2388,6 +2392,7 @@ Una vez realizados los cambios, ejecuta el proyecto y verás los registros final
 
 ## Relaciones uno a muchos
 Duration: 0:10:00
+
 En este tutorial aprenderás a cómo usar la anotación `@Relation` para implementar [**relaciones uno a muchos**](https://developer.android.com/training/data-storage/room/relationships#one-to-many) con Room.
 
 ### Implementar Relación Uno A Muchos
@@ -2800,6 +2805,7 @@ Ya finalizando, ejecuta el aplicativo. Deberás ver la siguiente imagen:
 
 ## Relaciones muchos a muchos
 Duration: 0:10:00
+
 En este tutorial aprenderás a implementar [relaciones muchos a muchos](https://developer.android.com/training/data-storage/room/relationships#many-to-many) con Room a través de la anotación `@Relation`.
 
 Recuerda leer el [tutorial relaciones uno a muchos](https://www.develou.com/relaciones-uno-a-muchos-con-room/) para seguir un trayecto secuencial de esta guía de Room.
@@ -3103,7 +3109,7 @@ private void subscribeToUi() {
 }
 ```
 8. Crear DAOs
-Añade dos nuevos DAOs abstractos para los ítems (`ItemDao`) y la tabla de referencia (`ShoppingListItemDao`). Escríbeles un método para insertar una lista de elementos.
+   Añade dos nuevos DAOs abstractos para los ítems (`ItemDao`) y la tabla de referencia (`ShoppingListItemDao`). Escríbeles un método para insertar una lista de elementos.
 
 ```java
 @Dao
@@ -3231,6 +3237,7 @@ Finalmente, ejecuta el aplicativo y revisa que se carguen los ítems de las list
 
 ## Crear Vistas En Room
 Duration: 0:10:00
+
 En este tutorial aprenderás a cómo usar la anotación `@DatabaseView` para [**crear vistas en Room**](https://developer.android.com/training/data-storage/room/creating-views) con el fin de empaquetar consultas complejas.
 
 Recuerda leer el [**tutorial de relaciones muchos a muchos**](https://www.develou.com/relaciones-muchos-a-muchos-con-room/) para que sigas la secuencia de esta guía de Room.
@@ -3555,6 +3562,7 @@ Con esos cambios ya puedes ejecutar el proyecto y ver la consulta de la view cre
 
 ## El Database Inspector En Android Studio
 Duration: 0:10:00
+
 En este tutorial aprenderás a usar el Database Inspector de Android Studio para depurar tus bases de datos SQLite creadas con Room.
 
 ### Database Inspector
@@ -3633,6 +3641,7 @@ También es puedes usar comandos como `INSERT`, `UPDATE`, `DELETE`, `CREATE TABL
 
 ## Ejemplo De Room: App Listas De Compras
 Duration: 0:05:00
+
 En este artículo verás el ejemplo de Room que tomamos como referencia en la [**guía**](https://www.develou.com/room/). Una aplicación Android sencilla que maneja listas de compras y sus ítems.
 
 Te explicaremos las características, el modelo relacional de la base de datos y la estructura de paquetes en Android Studio. Y luego, te proveeremos el link para que descargues el proyecto.
